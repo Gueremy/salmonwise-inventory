@@ -2,104 +2,101 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
-All colors MUST be HSL.
-*/
+/* SalmoTrack Design System — industrial, profesional, salmonero */
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    /* Marca SalmoTrack */
+    --background: 214 40% 97%;            /* #F4F7FB */
+    --foreground: 240 23% 14%;            /* #1A1A2E */
 
     --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card-foreground: 240 23% 14%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    --popover-foreground: 240 23% 14%;
 
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
+    --primary: 205 78% 26%;               /* #0F4C75 */
+    --primary-foreground: 0 0% 100%;
 
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 205 71% 38%;             /* #1B6CA8 */
+    --secondary-foreground: 0 0% 100%;
 
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    --muted: 214 32% 93%;
+    --muted-foreground: 220 9% 46%;       /* #6B7280 */
 
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    --accent: 205 71% 38%;
+    --accent-foreground: 0 0% 100%;
 
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive: 0 84% 60%;             /* #EF4444 */
+    --destructive-foreground: 0 0% 100%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
+    --border: 214 24% 88%;
+    --input: 214 24% 88%;
+    --ring: 205 78% 26%;
 
     --radius: 0.5rem;
 
-    --sidebar-background: 0 0% 98%;
+    /* Estados de container — sistema de 5 colores */
+    --status-disponible: 142 71% 45%;     /* #22C55E verde */
+    --status-medio: 45 93% 47%;           /* #EAB308 amarillo */
+    --status-critico: 0 84% 60%;          /* #EF4444 rojo */
+    --status-mantenimiento: 220 9% 65%;   /* #9CA3AF gris */
+    --status-cuarentena: 258 90% 66%;     /* #8B5CF6 morado */
 
-    --sidebar-foreground: 240 5.3% 26.1%;
+    /* Severidad alertas */
+    --alert-critical-bg: 0 86% 97%;
+    --alert-warning-bg: 48 100% 96%;
+    --alert-info-bg: 210 100% 97%;
 
-    --sidebar-primary: 240 5.9% 10%;
+    /* Sidebar */
+    --sidebar-background: 205 78% 22%;
+    --sidebar-foreground: 0 0% 95%;
+    --sidebar-primary: 205 71% 50%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 205 71% 30%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 205 60% 30%;
+    --sidebar-ring: 205 71% 60%;
 
-    --sidebar-primary-foreground: 0 0% 98%;
-
-    --sidebar-accent: 240 4.8% 95.9%;
-
-    --sidebar-accent-foreground: 240 5.9% 10%;
-
-    --sidebar-border: 220 13% 91%;
-
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    /* Escena 3D */
+    --scene-bg: 240 23% 14%;
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --background: 240 23% 10%;
+    --foreground: 0 0% 95%;
+    --card: 240 18% 14%;
+    --card-foreground: 0 0% 95%;
+    --popover: 240 18% 14%;
+    --popover-foreground: 0 0% 95%;
+    --primary: 205 71% 50%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 205 50% 30%;
+    --secondary-foreground: 0 0% 95%;
+    --muted: 240 10% 20%;
+    --muted-foreground: 220 9% 65%;
+    --accent: 205 50% 30%;
+    --accent-foreground: 0 0% 95%;
+    --destructive: 0 70% 50%;
+    --destructive-foreground: 0 0% 95%;
+    --border: 240 10% 22%;
+    --input: 240 10% 22%;
+    --ring: 205 71% 50%;
   }
 }
 
 @layer base {
-  * {
-    @apply border-border;
-  }
+  * { @apply border-border; }
+  body { @apply bg-background text-foreground antialiased; font-family: 'Inter', system-ui, sans-serif; }
+  h1, h2, h3, h4 { font-family: 'Inter', system-ui, sans-serif; letter-spacing: -0.01em; }
+}
 
-  body {
-    @apply bg-background text-foreground;
+@layer components {
+  .kpi-card {
+    @apply bg-card rounded-lg p-5 shadow-sm border border-border/60;
+  }
+  .badge-status {
+    @apply inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold;
   }
 }
