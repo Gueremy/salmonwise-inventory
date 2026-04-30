@@ -43,7 +43,7 @@ export default function Login() {
             <div className="h-11 w-11 rounded-lg bg-white/15 backdrop-blur flex items-center justify-center">
               <Box className="h-6 w-6" />
             </div>
-            <div className="font-bold text-xl">SalmoTrack</div>
+            <div className="font-bold text-xl">Axious</div>
           </div>
           <div>
             <h2 className="text-4xl font-bold leading-tight mb-3">
@@ -65,7 +65,7 @@ export default function Login() {
             <div className="h-10 w-10 rounded-md bg-primary text-primary-foreground flex items-center justify-center">
               <Box className="h-5 w-5" />
             </div>
-            <div className="font-bold text-lg">SalmoTrack</div>
+            <div className="font-bold text-lg">Axious</div>
           </div>
 
           <div>
