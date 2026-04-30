@@ -2,11 +2,11 @@
 @tailwind components;
 @tailwind utilities;
 
-/* SalmoTrack Design System — industrial, profesional, salmonero */
+/* Axious Design System — industrial, profesional, salmonero */
 
 @layer base {
   :root {
-    /* Marca SalmoTrack */
+    /* Marca Axious */
     --background: 214 40% 97%;            /* #F4F7FB */
     --foreground: 240 23% 14%;            /* #1A1A2E */
 

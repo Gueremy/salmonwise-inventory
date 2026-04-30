@@ -29,7 +29,7 @@ export default function Operario() {
               <Box className="h-5 w-5" />
             </div>
             <div>
-              <div className="text-xs opacity-80">SalmoTrack · Operario</div>
+              <div className="text-xs opacity-80">Axious · Operario</div>
               <div className="font-semibold leading-tight">{usuario.nombre}</div>
             </div>
           </div>

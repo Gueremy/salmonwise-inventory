@@ -24,7 +24,7 @@ export const Sidebar = () => {
             <Box className="h-5 w-5" />
           </div>
           <div>
-            <div className="font-bold tracking-tight">SalmoTrack</div>
+            <div className="font-bold tracking-tight">Axious</div>
             <div className="text-[11px] text-sidebar-foreground/70">Skretting Los Lagos</div>
           </div>
         </div>
