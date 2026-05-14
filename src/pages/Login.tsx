@@ -1,41 +1,104 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { Box } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { useRole } from "@/context/RoleContext";
-import { usuarios, rolLabel } from "@/data/mock";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+import axios from 'axios';
+import { Box, Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { apiClient } from '@/lib/apiClient';
+import { useAuthStore, type Usuario } from '@/store/authStore';
+
+const loginSchema = z.object({
+  email: z.string().email('Correo electrónico inválido'),
+  password: z.string().min(1, 'Ingresa tu contraseña'),
+});
+
+type LoginForm = z.infer<typeof loginSchema>;
+
+const ROUTE_BY_ROL: Record<string, string> = {
+  operario:    '/operario',
+  gerencia:    '/gerencia',
+  super_admin: '/dashboard',
+  admin_sede:  '/dashboard',
+  jefe_bodega: '/dashboard',
+};
+
+const MAX_INTENTOS = 5;
+const BLOQUEO_MS   = 5 * 60 * 1000;
 
 export default function Login() {
-  const navigate = useNavigate();
-  const { setUsuario } = useRole();
-  const [email, setEmail] = useState("roberto.soto@skretting.cl");
-  const [password, setPassword] = useState("••••••••");
-  const [rolId, setRolId] = useState(usuarios[0].id);
+  const navigate                                  = useNavigate();
+  const { setTokens, setUsuario }                 = useAuthStore();
+  const [intentos, setIntentos]                   = useState(0);
+  const [bloqueadoHasta, setBloqueadoHasta]       = useState<number | null>(null);
 
-  const handleLogin = () => {
-    const u = usuarios.find((x) => x.id === rolId)!;
-    setUsuario(u);
-    navigate(u.rol === "operario" ? "/operario" : u.rol === "gerencia" ? "/gerencia" : "/dashboard");
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+  } = useForm<LoginForm>({ resolver: zodResolver(loginSchema) });
+
+  const bloqueado = bloqueadoHasta !== null && Date.now() < bloqueadoHasta;
+
+  const onSubmit = async (formData: LoginForm) => {
+    if (bloqueado) {
+      const mins = Math.ceil((bloqueadoHasta! - Date.now()) / 60_000);
+      toast.error(`Cuenta bloqueada temporalmente. Intenta en ${mins} minuto${mins !== 1 ? 's' : ''}.`);
+      return;
+    }
+
+    try {
+      const { data: auth } = await apiClient.post<{
+        access_token: string;
+        refresh_token: string;
+      }>('/auth/login', {
+        email:    formData.email,
+        password: formData.password,
+      });
+
+      setTokens(auth.access_token, auth.refresh_token);
+
+      const { data: me } = await apiClient.get<Usuario>('/auth/me');
+      setUsuario(me);
+
+      setIntentos(0);
+      setBloqueadoHasta(null);
+
+      navigate(ROUTE_BY_ROL[me.rol] ?? '/dashboard');
+    } catch (err: unknown) {
+      const next = intentos + 1;
+
+      if (next >= MAX_INTENTOS) {
+        setBloqueadoHasta(Date.now() + BLOQUEO_MS);
+        setIntentos(0);
+        toast.error('Cuenta bloqueada temporalmente. Intenta en 5 minutos.');
+        return;
+      }
+
+      setIntentos(next);
+
+      if (axios.isAxiosError(err) && !err.response) {
+        toast.error('No hay conexión. Revisa el Wi-Fi.');
+      } else {
+        toast.error('Correo o contraseña incorrectos.');
+      }
+    }
   };
 
   return (
     <div className="min-h-screen w-full flex items-stretch">
       {/* Panel izquierdo decorativo */}
       <div className="hidden lg:flex flex-1 relative overflow-hidden bg-gradient-to-br from-primary via-primary to-secondary">
-        <div className="absolute inset-0 opacity-20"
+        <div
+          className="absolute inset-0 opacity-20"
           style={{
             backgroundImage:
-              "radial-gradient(circle at 20% 30%, white 1px, transparent 1px), radial-gradient(circle at 70% 60%, white 1px, transparent 1px)",
-            backgroundSize: "40px 40px, 60px 60px",
+              'radial-gradient(circle at 20% 30%, white 1px, transparent 1px), radial-gradient(circle at 70% 60%, white 1px, transparent 1px)',
+            backgroundSize: '40px 40px, 60px 60px',
           }}
         />
         <div className="relative z-10 flex flex-col justify-between p-12 text-primary-foreground">
@@ -58,7 +121,7 @@ export default function Login() {
         </div>
       </div>
 
-      {/* Form */}
+      {/* Panel del formulario */}
       <div className="flex-1 flex items-center justify-center p-8 bg-background">
         <div className="w-full max-w-sm space-y-6">
           <div className="lg:hidden flex items-center gap-2 mb-6">
@@ -73,37 +136,55 @@ export default function Login() {
             <p className="text-sm text-muted-foreground mt-1">Accede a tu panel de gestión.</p>
           </div>
 
-          <div className="space-y-4">
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
             <div className="space-y-2">
               <Label htmlFor="email">Correo electrónico</Label>
-              <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+              <Input
+                id="email"
+                type="email"
+                autoComplete="email"
+                placeholder="usuario@empresa.cl"
+                disabled={isSubmitting || bloqueado}
+                className="h-12 text-base"
+                {...register('email')}
+              />
+              {errors.email && (
+                <p className="text-sm text-destructive">{errors.email.message}</p>
+              )}
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="pwd">Contraseña</Label>
-              <Input id="pwd" type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
-            </div>
-            <div className="space-y-2">
-              <Label>Rol (demo)</Label>
-              <Select value={rolId} onValueChange={setRolId}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {usuarios.map((u) => (
-                    <SelectItem key={u.id} value={u.id}>
-                      {u.nombre} — {rolLabel[u.rol]}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
 
-          <Button onClick={handleLogin} className="w-full bg-primary hover:bg-secondary">
-            Ingresar
-          </Button>
+            <div className="space-y-2">
+              <Label htmlFor="password">Contraseña</Label>
+              <Input
+                id="password"
+                type="password"
+                autoComplete="current-password"
+                disabled={isSubmitting || bloqueado}
+                className="h-12 text-base"
+                {...register('password')}
+              />
+              {errors.password && (
+                <p className="text-sm text-destructive">{errors.password.message}</p>
+              )}
+            </div>
 
-          <p className="text-xs text-muted-foreground text-center">
-            Prototipo · datos simulados sin backend.
-          </p>
+            <Button
+              type="submit"
+              disabled={isSubmitting || bloqueado}
+              className="w-full min-h-[56px] text-base font-semibold bg-primary hover:bg-secondary"
+            >
+              {isSubmitting ? (
+                <span className="flex items-center gap-2">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Iniciando sesión...
+                </span>
+              ) : bloqueado ? (
+                'Cuenta bloqueada temporalmente'
+              ) : (
+                'Iniciar sesión'
+              )}
+            </Button>
+          </form>
         </div>
       </div>
     </div>
