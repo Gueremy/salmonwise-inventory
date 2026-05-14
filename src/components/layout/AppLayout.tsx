@@ -1,23 +1,26 @@
-import { Outlet, useLocation, Navigate } from "react-router-dom";
-import { Sidebar } from "./Sidebar";
-import { Header } from "./Header";
-import { useRole } from "@/context/RoleContext";
+import { Outlet, useLocation, Navigate } from 'react-router-dom';
+import { Sidebar } from './Sidebar';
+import { Header } from './Header';
+import { useAuthStore } from '@/store/authStore';
 
 const titles: Record<string, string> = {
-  "/dashboard": "Dashboard",
-  "/sedes": "Vista Global de Sedes",
-  "/movimientos": "Movimientos",
-  "/alertas": "Alertas",
-  "/reportes": "Reportes",
-  "/inventario": "Inventario 3D",
+  '/dashboard':   'Dashboard',
+  '/sedes':       'Vista Global de Sedes',
+  '/movimientos': 'Movimientos',
+  '/alertas':     'Alertas',
+  '/reportes':    'Reportes',
+  '/inventario':  'Inventario 3D',
+  '/gerencia':    'Gerencia',
+  '/usuarios':    'Gestión de Usuarios',
+  '/config':      'Configuración',
 };
 
 export const AppLayout = () => {
-  const { usuario } = useRole();
-  const { pathname } = useLocation();
+  const usuario       = useAuthStore((s) => s.usuario);
+  const { pathname }  = useLocation();
 
-  // Operario tiene su propia vista mobile
-  if (usuario.rol === "operario" && !pathname.startsWith("/operario")) {
+  // Operario tiene su propia vista — redirección de seguridad
+  if (usuario?.rol === 'operario') {
     return <Navigate to="/operario" replace />;
   }
 

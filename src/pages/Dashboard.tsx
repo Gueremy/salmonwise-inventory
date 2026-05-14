@@ -1,5 +1,5 @@
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis, Cell } from "recharts";
-import { Box, Bell, ArrowUpRight, Clock } from "lucide-react";
+import { Box, Bell, ArrowUpRight, Clock, type LucideIcon } from "lucide-react";
 import { galpones, movimientosPendientes, ocupacionToEstado, estadoColor } from "@/data/mock";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
@@ -7,7 +7,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 
-const KpiCard = ({ label, value, sub, icon: Icon, accent }: any) => (
+interface KpiCardProps { label: string; value: string; sub?: string; icon: LucideIcon; accent: string; }
+const KpiCard = ({ label, value, sub, icon: Icon, accent }: KpiCardProps) => (
   <div className="kpi-card">
     <div className="flex items-start justify-between">
       <div>

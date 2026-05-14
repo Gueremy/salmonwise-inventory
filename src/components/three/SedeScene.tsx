@@ -3,7 +3,7 @@ import { Canvas, useFrame } from "@react-three/fiber";
 import { OrbitControls, Html, Edges, Float } from "@react-three/drei";
 import * as THREE from "three";
 import { useNavigate } from "react-router-dom";
-import { Galpon, ocupacionToEstado, estadoColor, TipoSede } from "@/data/mock";
+import { Galpon, ocupacionToEstado, estadoColor, TipoSede } from '@/types';
 
 interface Props {
   galpones: Galpon[];

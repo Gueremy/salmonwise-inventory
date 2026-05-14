@@ -1,9 +1,8 @@
-import { createContext, useContext, useState, ReactNode } from "react";
-import { usuarios, Usuario } from "@/data/mock";
+import { createContext, useContext, useState, ReactNode } from 'react';
+import { useAuthStore, type Usuario } from '@/store/authStore';
 
 interface RoleContextType {
   usuario: Usuario;
-  setUsuario: (u: Usuario) => void;
   online: boolean;
   setOnline: (b: boolean) => void;
 }
@@ -11,10 +10,11 @@ interface RoleContextType {
 const RoleContext = createContext<RoleContextType | null>(null);
 
 export const RoleProvider = ({ children }: { children: ReactNode }) => {
-  const [usuario, setUsuario] = useState<Usuario>(usuarios[0]);
+  // PrivateRoute garantiza que usuario no es null en rutas protegidas
+  const usuario  = useAuthStore((s) => s.usuario) as Usuario;
   const [online, setOnline] = useState(true);
   return (
-    <RoleContext.Provider value={{ usuario, setUsuario, online, setOnline }}>
+    <RoleContext.Provider value={{ usuario, online, setOnline }}>
       {children}
     </RoleContext.Provider>
   );
@@ -22,6 +22,6 @@ export const RoleProvider = ({ children }: { children: ReactNode }) => {
 
 export const useRole = () => {
   const ctx = useContext(RoleContext);
-  if (!ctx) throw new Error("useRole debe usarse dentro de RoleProvider");
+  if (!ctx) throw new Error('useRole debe usarse dentro de RoleProvider');
   return ctx;
 };

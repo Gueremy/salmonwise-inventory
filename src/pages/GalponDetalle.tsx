@@ -6,7 +6,7 @@ import { GalponScene } from "@/components/three/GalponScene";
 import { StatusLegend } from "@/components/StatusLegend";
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/StatusBadge";
-import { Calendar, Package, Thermometer, Truck, History, X, ClipboardEdit } from "lucide-react";
+import { Calendar, Package, Thermometer, Truck, History, X, ClipboardEdit, type LucideIcon } from "lucide-react";
 import { MovimientoForm } from "@/components/MovimientoForm";
 
 export default function GalponDetalle() {
@@ -109,7 +109,8 @@ export default function GalponDetalle() {
   );
 }
 
-const Row = ({ label, value, icon: Icon, warning }: any) => (
+interface RowProps { label: string; value: string; icon?: LucideIcon; warning?: string; }
+const Row = ({ label, value, icon: Icon, warning }: RowProps) => (
   <div className="flex items-start justify-between gap-3 text-sm">
     <span className="text-muted-foreground flex items-center gap-1.5 shrink-0">
       {Icon && <Icon className="h-3.5 w-3.5" />}

@@ -2,7 +2,7 @@ import { useRef, useState, Suspense } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
 import { OrbitControls, Html, Edges } from "@react-three/drei";
 import * as THREE from "three";
-import { Container, estadoColor } from "@/data/mock";
+import { Container, estadoColor } from '@/types';
 
 interface Props {
   containers: Container[];

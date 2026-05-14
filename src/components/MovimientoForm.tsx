@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowDownToLine, ArrowUpFromLine, RefreshCw, ShieldCheck, Stethoscope } from "lucide-react";
+import { ArrowDownToLine, ArrowUpFromLine, RefreshCw, ShieldCheck, Stethoscope, type LucideIcon } from "lucide-react";
 import { Container, containers as allContainers } from "@/data/mock";
 import { useRole } from "@/context/RoleContext";
 import { toast } from "sonner";
@@ -18,7 +18,7 @@ interface Props {
 
 type Tipo = "entrada_proveedor" | "salida_produccion" | "traslado_interno";
 
-const tipos: { id: Tipo; label: string; icon: any; desc: string }[] = [
+const tipos: { id: Tipo; label: string; icon: LucideIcon; desc: string }[] = [
   { id: "entrada_proveedor", label: "Entrada de Proveedor", icon: ArrowDownToLine, desc: "Recepción de insumo externo" },
   { id: "salida_produccion", label: "Salida a Producción", icon: ArrowUpFromLine, desc: "Despacho a planta o pontón" },
   { id: "traslado_interno", label: "Traslado Interno", icon: RefreshCw, desc: "Movimiento entre containers" },
@@ -171,7 +171,8 @@ export const MovimientoForm = ({ open, onOpenChange, container }: Props) => {
   );
 };
 
-const Field = ({ label, type = "text", placeholder, className = "" }: any) => (
+interface FieldProps { label: string; type?: string; placeholder?: string; className?: string; }
+const Field = ({ label, type = 'text', placeholder, className = '' }: FieldProps) => (
   <div className={`space-y-1.5 ${className}`}>
     <Label className="text-xs">{label}</Label>
     <Input type={type} placeholder={placeholder} />

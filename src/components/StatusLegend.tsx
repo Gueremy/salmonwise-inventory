@@ -1,4 +1,4 @@
-import { estadoColor, estadoLabel, EstadoContainer } from "@/data/mock";
+import { estadoColor, estadoLabel, EstadoContainer } from '@/types';
 
 const order: EstadoContainer[] = ["disponible", "medio", "critico", "mantenimiento", "cuarentena"];
 const ranges: Record<EstadoContainer, string> = {

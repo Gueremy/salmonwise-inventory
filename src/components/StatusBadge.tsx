@@ -1,4 +1,4 @@
-import { EstadoContainer, estadoColor, estadoLabel } from "@/data/mock";
+import { EstadoContainer, estadoColor, estadoLabel } from '@/types';
 
 export const StatusBadge = ({ estado }: { estado: EstadoContainer }) => (
   <span

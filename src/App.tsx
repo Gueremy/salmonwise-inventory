@@ -1,23 +1,24 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Route, Routes } from "react-router-dom";
-import { Toaster as Sonner } from "@/components/ui/sonner";
-import { Toaster } from "@/components/ui/toaster";
-import { TooltipProvider } from "@/components/ui/tooltip";
-import { RoleProvider } from "@/context/RoleContext";
-import { AppLayout } from "@/components/layout/AppLayout";
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { BrowserRouter, Route, Routes } from 'react-router-dom';
+import { Toaster as Sonner } from '@/components/ui/sonner';
+import { Toaster } from '@/components/ui/toaster';
+import { TooltipProvider } from '@/components/ui/tooltip';
+import { RoleProvider } from '@/context/RoleContext';
+import { AppLayout } from '@/components/layout/AppLayout';
+import { PrivateRoute } from '@/components/PrivateRoute';
 
-import Login from "./pages/Login";
-import Dashboard from "./pages/Dashboard";
-import Sedes from "./pages/Sedes";
-import SedeDetalle from "./pages/SedeDetalle";
-import GalponDetalle from "./pages/GalponDetalle";
-import Movimientos from "./pages/Movimientos";
-import Alertas from "./pages/Alertas";
-import Operario from "./pages/Operario";
-import Gerencia from "./pages/Gerencia";
-import Inventario from "./pages/Inventario";
-import Stub from "./pages/Stub";
-import NotFound from "./pages/NotFound";
+import Login from './pages/Login';
+import Dashboard from './pages/Dashboard';
+import Sedes from './pages/Sedes';
+import SedeDetalle from './pages/SedeDetalle';
+import GalponDetalle from './pages/GalponDetalle';
+import Movimientos from './pages/Movimientos';
+import Alertas from './pages/Alertas';
+import Operario from './pages/Operario';
+import Gerencia from './pages/Gerencia';
+import Inventario from './pages/Inventario';
+import Stub from './pages/Stub';
+import NotFound from './pages/NotFound';
 
 const queryClient = new QueryClient();
 
@@ -30,20 +31,31 @@ const App = () => (
         <BrowserRouter>
           <Routes>
             <Route path="/" element={<Login />} />
-            <Route path="/operario" element={<Operario />} />
 
-            <Route element={<AppLayout />}>
-              <Route path="/dashboard" element={<Dashboard />} />
-              <Route path="/sedes" element={<Sedes />} />
-              <Route path="/sedes/:id" element={<SedeDetalle />} />
-              <Route path="/galpon/:id" element={<GalponDetalle />} />
-              <Route path="/inventario" element={<Inventario />} />
-              <Route path="/movimientos" element={<Movimientos />} />
-              <Route path="/alertas" element={<Alertas />} />
-              <Route path="/gerencia" element={<Gerencia />} />
-              <Route path="/reportes" element={<Stub title="Reportes" />} />
-              <Route path="/usuarios" element={<Stub title="Gestión de usuarios" />} />
-              <Route path="/config" element={<Stub title="Configuración" />} />
+            {/* Vista operario — operario y super_admin */}
+            <Route element={<PrivateRoute roles={['operario', 'super_admin']} />}>
+              <Route path="/operario" element={<Operario />} />
+            </Route>
+
+            {/* App principal — todos los roles excepto operario */}
+            <Route element={<PrivateRoute roles={['super_admin', 'admin_sede', 'jefe_bodega', 'gerencia']} />}>
+              <Route element={<AppLayout />}>
+                <Route path="/dashboard"   element={<Dashboard />} />
+                <Route path="/sedes"       element={<Sedes />} />
+                <Route path="/sedes/:id"   element={<SedeDetalle />} />
+                <Route path="/galpon/:id"  element={<GalponDetalle />} />
+                <Route path="/inventario"  element={<Inventario />} />
+                <Route path="/movimientos" element={<Movimientos />} />
+                <Route path="/alertas"     element={<Alertas />} />
+                <Route path="/gerencia"    element={<Gerencia />} />
+                <Route path="/reportes"    element={<Stub title="Reportes" />} />
+                <Route path="/config"      element={<Stub title="Configuración" />} />
+
+                {/* Solo admin_sede y super_admin */}
+                <Route element={<PrivateRoute roles={['super_admin', 'admin_sede']} />}>
+                  <Route path="/usuarios" element={<Stub title="Gestión de usuarios" />} />
+                </Route>
+              </Route>
             </Route>
 
             <Route path="*" element={<NotFound />} />
