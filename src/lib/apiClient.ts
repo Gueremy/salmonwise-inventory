@@ -1,0 +1,37 @@
+import axios from 'axios';
+import { useAuthStore } from '@/store/authStore';
+
+export const apiClient = axios.create({
+  baseURL: import.meta.env.VITE_API_URL || 'https://axious-backend.onrender.com',
+  headers: { 'Content-Type': 'application/json' },
+});
+
+apiClient.interceptors.request.use((config) => {
+  const token = useAuthStore.getState().token;
+  if (token) config.headers.Authorization = `Bearer ${token}`;
+  return config;
+});
+
+apiClient.interceptors.response.use(
+  (res) => res,
+  async (error) => {
+    if (error.response?.status === 401) {
+      const refreshToken = useAuthStore.getState().refreshToken;
+      if (refreshToken) {
+        try {
+          const { data } = await axios.post(
+            `${import.meta.env.VITE_API_URL || 'https://axious-backend.onrender.com'}/auth/refresh`,
+            { refresh_token: refreshToken }
+          );
+          useAuthStore.getState().setTokens(data.access_token, data.refresh_token);
+          error.config.headers.Authorization = `Bearer ${data.access_token}`;
+          return apiClient(error.config);
+        } catch {
+          useAuthStore.getState().logout();
+          window.location.href = '/';
+        }
+      }
+    }
+    return Promise.reject(error);
+  }
+);
