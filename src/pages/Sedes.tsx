@@ -7,41 +7,22 @@ import { useAuthStore } from "@/store/authStore";
 import type { SedeAPI, TipoSede } from "@/types";
 
 const tipoIcon: Record<TipoSede, React.ComponentType<{ className?: string }>> = {
+  ponton:      Ship,
   embarcacion: Ship,
-  planta: Factory,
-  bodega: Warehouse,
+  planta:      Factory,
+  bodega:      Warehouse,
 };
 
 const tipoLabel: Record<TipoSede, string> = {
+  ponton:      'Pontón',
   embarcacion: 'Embarcación',
   planta:      'Planta',
   bodega:      'Bodega',
 };
 
-function OcupacionBar({ pct }: { pct: number }) {
-  const color = pct >= 80
-    ? 'var(--color-status-critico)'
-    : pct >= 41
-    ? 'var(--color-status-medio)'
-    : 'var(--color-status-disponible)';
-  return (
-    <div>
-      <div className="text-xs font-medium mb-1 flex justify-between" style={{ color: 'var(--color-ink-secondary)' }}>
-        <span>Ocupación</span>
-        <span>{pct}%</span>
-      </div>
-      <div className="h-2 bg-muted rounded-full overflow-hidden">
-        <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, backgroundColor: color }} />
-      </div>
-    </div>
-  );
-}
-
 function SedeCard({ sede }: { sede: SedeAPI }) {
-  const Icon = tipoIcon[sede.tipo_operacion] ?? Warehouse;
-  const pct = sede.capacidad_total > 0
-    ? Math.round((sede.ocupacion_actual / sede.capacidad_total) * 100)
-    : 0;
+  const Icon = tipoIcon[sede.tipo] ?? Warehouse;
+  const activo = sede.estado === 'activo';
 
   return (
     <Link
@@ -55,30 +36,25 @@ function SedeCard({ sede }: { sede: SedeAPI }) {
         <span
           className="px-2 py-0.5 rounded text-[11px] font-semibold"
           style={
-            sede.activo
+            activo
               ? { backgroundColor: 'var(--color-status-disponible-bg)', color: 'var(--color-status-disponible)' }
               : { backgroundColor: 'var(--color-status-mantenimiento-bg)', color: 'var(--color-status-mantenimiento)' }
           }
         >
-          {sede.activo ? 'Activa' : 'Inactiva'}
+          {activo ? 'Activa' : 'Inactiva'}
         </span>
       </div>
 
       <div>
         <div className="font-semibold text-sm leading-tight">{sede.nombre}</div>
         <div className="text-xs text-muted-foreground mt-0.5">
-          {tipoLabel[sede.tipo_operacion]} · {sede.ciudad}, {sede.region}
+          {tipoLabel[sede.tipo]} · {sede.ubicacion}
         </div>
       </div>
 
-      <OcupacionBar pct={pct} />
-
-      <div className="flex items-center justify-between text-xs mt-1">
-        <span className="text-muted-foreground">
-          {sede.ocupacion_actual.toLocaleString('es-CL')} / {sede.capacidad_total.toLocaleString('es-CL')} kg
-        </span>
+      <div className="flex items-center justify-end text-xs mt-1">
         <span className="text-primary font-medium flex items-center gap-1 group-hover:translate-x-0.5 transition">
-          Ver <ArrowRight className="h-3 w-3" />
+          Ver detalle <ArrowRight className="h-3 w-3" />
         </span>
       </div>
     </Link>
@@ -105,15 +81,7 @@ export default function Sedes() {
   const usuario = useAuthStore((s) => s.usuario);
   const esSuperAdmin = usuario?.rol === 'super_admin';
 
-  const activas    = sedes?.filter((s) => s.activo).length ?? 0;
-  const totalPct   = sedes?.length
-    ? Math.round(
-        sedes.reduce((acc, s) => {
-          const p = s.capacidad_total > 0 ? (s.ocupacion_actual / s.capacidad_total) * 100 : 0;
-          return acc + p;
-        }, 0) / sedes.length
-      )
-    : 0;
+  const activas = sedes?.filter((s) => s.estado === 'activo').length ?? 0;
 
   if (isError) {
     return (
@@ -146,7 +114,7 @@ export default function Sedes() {
         </div>
       )}
 
-      <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 gap-4">
         <div className="kpi-card">
           <div className="text-xs text-muted-foreground">Sedes activas</div>
           <div className="text-2xl font-bold mt-1">{isLoading ? <Skeleton className="h-7 w-12" /> : activas}</div>
@@ -154,10 +122,6 @@ export default function Sedes() {
         <div className="kpi-card">
           <div className="text-xs text-muted-foreground">Total sedes</div>
           <div className="text-2xl font-bold mt-1">{isLoading ? <Skeleton className="h-7 w-12" /> : (sedes?.length ?? 0)}</div>
-        </div>
-        <div className="kpi-card">
-          <div className="text-xs text-muted-foreground">Ocupación promedio</div>
-          <div className="text-2xl font-bold mt-1">{isLoading ? <Skeleton className="h-7 w-16" /> : `${totalPct}%`}</div>
         </div>
       </div>
     </div>

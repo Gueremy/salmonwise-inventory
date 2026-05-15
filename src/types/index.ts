@@ -1,21 +1,26 @@
 export type EstadoContainer = 'disponible' | 'medio' | 'critico' | 'mantenimiento' | 'cuarentena';
-export type TipoSede = 'embarcacion' | 'planta' | 'bodega';
+export type TipoSede = 'ponton' | 'planta' | 'bodega' | 'embarcacion';
 export type Rol = 'jefe_bodega' | 'admin_sede' | 'operario' | 'gerencia' | 'super_admin';
 export type TipoMovimiento = 'entrada_proveedor' | 'salida_produccion' | 'traslado_interno';
 export type EstadoMovimiento = 'pendiente' | 'aprobado' | 'rechazado';
 
-// --- API types (backend) ---
+/** Wrapper de paginación que usa el backend en todos los endpoints de lista */
+export interface Paginated<T> {
+  items: T[];
+  total: number;
+}
+
+// --- API types (backend — matches real response shapes) ---
 
 export interface SedeAPI {
   id: string;
   nombre: string;
-  tipo_operacion: TipoSede;
-  region: string;
-  ciudad: string;
-  capacidad_total: number;
-  ocupacion_actual: number;
-  activo: boolean;
-  responsable?: string;
+  tipo: TipoSede;
+  ubicacion: string;
+  latitud?: number | null;
+  longitud?: number | null;
+  capacidad_total?: number | null;
+  estado: 'activo' | 'inactivo';
 }
 
 export interface GalponAPI {
@@ -23,9 +28,9 @@ export interface GalponAPI {
   nombre: string;
   codigo: string;
   id_sede: string;
-  capacidad_total: number;
-  ocupacion_actual: number;
-  estado: string;
+  capacidad_total?: number | null;
+  ocupacion_actual?: number | null;
+  estado?: string;
   filas: number;
   columnas: number;
 }

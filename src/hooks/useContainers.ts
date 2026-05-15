@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/lib/apiClient';
-import type { ContainerAPI, ContainerQR, EstadoContainer } from '@/types';
+import type { ContainerAPI, ContainerQR, EstadoContainer, Paginated } from '@/types';
 
 interface ContainerFilters {
   estado?: EstadoContainer;
@@ -12,10 +12,10 @@ export function useContainers(idGalpon: string | undefined, filters?: ContainerF
   return useQuery<ContainerAPI[]>({
     queryKey: ['containers', idGalpon, filters],
     queryFn: async () => {
-      const { data } = await apiClient.get<ContainerAPI[]>('/containers/', {
+      const { data } = await apiClient.get<Paginated<ContainerAPI> | ContainerAPI[]>('/containers/', {
         params: { id_galpon: idGalpon, ...filters },
       });
-      return data;
+      return Array.isArray(data) ? data : data.items;
     },
     enabled: !!idGalpon,
     staleTime: 30_000,

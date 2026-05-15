@@ -1,15 +1,19 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/lib/apiClient';
-import type { MovimientoAPI } from '@/types';
+import type { MovimientoAPI, Paginated } from '@/types';
+
+function unwrap<T>(data: Paginated<T> | T[]): T[] {
+  return Array.isArray(data) ? data : data.items;
+}
 
 export function useMovimientosPendientes(idSede: string | undefined) {
   return useQuery<MovimientoAPI[]>({
     queryKey: ['movimientos', 'pendientes', idSede],
     queryFn: async () => {
-      const { data } = await apiClient.get<MovimientoAPI[]>('/movimientos/pendientes', {
+      const { data } = await apiClient.get<Paginated<MovimientoAPI> | MovimientoAPI[]>('/movimientos/pendientes', {
         params: { id_sede: idSede },
       });
-      return data;
+      return unwrap(data);
     },
     enabled: !!idSede,
     staleTime: 10_000,
@@ -21,10 +25,10 @@ export function useFefo(idProducto: string | undefined, idSede: string | undefin
   return useQuery<MovimientoAPI[]>({
     queryKey: ['movimientos', 'fefo', idProducto, idSede],
     queryFn: async () => {
-      const { data } = await apiClient.get<MovimientoAPI[]>('/movimientos/fefo', {
+      const { data } = await apiClient.get<Paginated<MovimientoAPI> | MovimientoAPI[]>('/movimientos/fefo', {
         params: { id_producto: idProducto, id_sede: idSede },
       });
-      return data;
+      return unwrap(data);
     },
     enabled: !!idProducto && !!idSede,
     staleTime: 60_000,
@@ -35,10 +39,10 @@ export function useTrazabilidad(numeroLote: string) {
   return useQuery<MovimientoAPI[]>({
     queryKey: ['movimientos', 'trazabilidad', numeroLote],
     queryFn: async () => {
-      const { data } = await apiClient.get<MovimientoAPI[]>('/movimientos/trazabilidad', {
+      const { data } = await apiClient.get<Paginated<MovimientoAPI> | MovimientoAPI[]>('/movimientos/trazabilidad', {
         params: { numero_lote: numeroLote },
       });
-      return data;
+      return unwrap(data);
     },
     enabled: numeroLote.length > 3,
     staleTime: 30_000,

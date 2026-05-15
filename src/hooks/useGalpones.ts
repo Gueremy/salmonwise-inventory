@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/lib/apiClient';
-import type { GalponAPI } from '@/types';
+import type { GalponAPI, Paginated } from '@/types';
 
 const STALE = 15 * 60 * 1000;
 
@@ -8,10 +8,10 @@ export function useGalpones(idSede: string | undefined) {
   return useQuery<GalponAPI[]>({
     queryKey: ['galpones', idSede],
     queryFn: async () => {
-      const { data } = await apiClient.get<GalponAPI[]>('/galpones/', {
+      const { data } = await apiClient.get<Paginated<GalponAPI>>('/galpones/', {
         params: { id_sede: idSede },
       });
-      return data;
+      return data.items;
     },
     enabled: !!idSede,
     staleTime: STALE,

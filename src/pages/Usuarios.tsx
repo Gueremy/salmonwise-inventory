@@ -13,7 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { toast } from "sonner";
 import { useAuthStore } from "@/store/authStore";
 import { useGalpones } from "@/hooks/useGalpones";
-import type { UsuarioAPI, Rol } from "@/types";
+import type { UsuarioAPI, Rol, Paginated } from "@/types";
 import { rolLabel } from "@/types";
 
 const ROL_OPTIONS: Rol[] = ['super_admin', 'admin_sede', 'jefe_bodega', 'operario', 'gerencia'];
@@ -22,10 +22,10 @@ function useUsuarios(idSede?: string) {
   return useQuery<UsuarioAPI[]>({
     queryKey: ['usuarios', idSede],
     queryFn: async () => {
-      const { data } = await apiClient.get<UsuarioAPI[]>('/usuarios/', {
+      const { data } = await apiClient.get<Paginated<UsuarioAPI> | UsuarioAPI[]>('/usuarios/', {
         params: idSede ? { id_sede: idSede } : {},
       });
-      return data;
+      return Array.isArray(data) ? data : data.items;
     },
     staleTime: 30_000,
   });

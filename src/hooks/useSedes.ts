@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/lib/apiClient';
-import type { SedeAPI } from '@/types';
+import type { SedeAPI, Paginated } from '@/types';
 
 const STALE = 15 * 60 * 1000;
 
@@ -8,8 +8,8 @@ export function useSedes() {
   return useQuery<SedeAPI[]>({
     queryKey: ['sedes'],
     queryFn: async () => {
-      const { data } = await apiClient.get<SedeAPI[]>('/sedes/');
-      return data;
+      const { data } = await apiClient.get<Paginated<SedeAPI>>('/sedes/');
+      return data.items;
     },
     staleTime: STALE,
   });

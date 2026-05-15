@@ -2,6 +2,11 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { apiClient } from '@/lib/apiClient';
 import { useAuthStore } from '@/store/authStore';
+import type { Paginated } from '@/types';
+
+function unwrapAlertas(data: Paginated<Alerta> | Alerta[]): Alerta[] {
+  return Array.isArray(data) ? data : data.items;
+}
 
 export type AlertaTipo =
   | 'capacidad_critica'
@@ -40,10 +45,10 @@ export function useAlertas(): AlertasData {
   const activasQuery = useQuery<Alerta[]>({
     queryKey: ['alertas', 'activas', idSede],
     queryFn: async () => {
-      const { data } = await apiClient.get<Alerta[]>('/alertas/activas', {
+      const { data } = await apiClient.get<Paginated<Alerta> | Alerta[]>('/alertas/activas', {
         params: { id_sede: idSede },
       });
-      return data;
+      return unwrapAlertas(data);
     },
     enabled: !!idSede,
     staleTime: 10_000,
@@ -52,10 +57,10 @@ export function useAlertas(): AlertasData {
   const historialQuery = useQuery<Alerta[]>({
     queryKey: ['alertas', 'historial', idSede],
     queryFn: async () => {
-      const { data } = await apiClient.get<Alerta[]>('/alertas/historial', {
+      const { data } = await apiClient.get<Paginated<Alerta> | Alerta[]>('/alertas/historial', {
         params: { id_sede: idSede },
       });
-      return data;
+      return unwrapAlertas(data);
     },
     enabled: !!idSede,
     staleTime: 30_000,
