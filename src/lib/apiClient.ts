@@ -1,8 +1,11 @@
 import axios from 'axios';
 import { useAuthStore } from '@/store/authStore';
 
+// En producción (Vercel) se usa /backend como proxy para evitar CORS.
+// En desarrollo, Vite proxea /backend → axious-backend.onrender.com.
+// VITE_API_URL puede sobreescribir ambos (ej: backend local).
 export const apiClient = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'https://axious-backend.onrender.com',
+  baseURL: import.meta.env.VITE_API_URL || '/backend',
   headers: { 'Content-Type': 'application/json' },
 });
 
@@ -20,7 +23,7 @@ apiClient.interceptors.response.use(
       if (refreshToken) {
         try {
           const { data } = await axios.post(
-            `${import.meta.env.VITE_API_URL || 'https://axious-backend.onrender.com'}/auth/refresh`,
+            `${import.meta.env.VITE_API_URL || '/backend'}/auth/refresh`,
             { refresh_token: refreshToken }
           );
           useAuthStore.getState().setTokens(data.access_token, data.refresh_token);

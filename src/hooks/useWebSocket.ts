@@ -32,7 +32,9 @@ export function useWebSocket(): void {
 
     if (!isAuthenticated || !idSede || !token) return;
 
+    // WS needs absolute URL — proxy only works for HTTP, not WS
     const apiUrl =
+      (import.meta.env.VITE_WS_URL as string | undefined) ??
       (import.meta.env.VITE_API_URL as string | undefined) ??
       'https://axious-backend.onrender.com';
 

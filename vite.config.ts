@@ -11,6 +11,13 @@ export default defineConfig(({ mode }) => ({
     hmr: {
       overlay: false,
     },
+    proxy: {
+      '/backend': {
+        target: 'https://axious-backend.onrender.com',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/backend/, ''),
+      },
+    },
   },
   plugins: [
     react(),
