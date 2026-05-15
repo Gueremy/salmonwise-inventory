@@ -1,23 +1,25 @@
 import { Outlet, useLocation, Navigate } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
 import { Header } from './Header';
+import { OfflineBanner } from '@/components/OfflineBanner';
 import { useAuthStore } from '@/store/authStore';
 
 const titles: Record<string, string> = {
-  '/dashboard':   'Dashboard',
-  '/sedes':       'Vista Global de Sedes',
-  '/movimientos': 'Movimientos',
-  '/alertas':     'Alertas',
-  '/reportes':    'Reportes',
-  '/inventario':  'Inventario 3D',
-  '/gerencia':    'Gerencia',
-  '/usuarios':    'Gestión de Usuarios',
-  '/config':      'Configuración',
+  '/dashboard':       'Dashboard',
+  '/sedes':           'Vista Global de Sedes',
+  '/movimientos':     'Movimientos',
+  '/alertas':         'Alertas',
+  '/reportes':        'Reportes',
+  '/inventario':      'Inventario 3D',
+  '/gerencia':        'Gerencia',
+  '/usuarios':        'Gestión de Usuarios',
+  '/configuracion':   'Configuración',
+  '/config':          'Configuración',
 };
 
 export const AppLayout = () => {
-  const usuario       = useAuthStore((s) => s.usuario);
-  const { pathname }  = useLocation();
+  const usuario      = useAuthStore((s) => s.usuario);
+  const { pathname } = useLocation();
 
   // Operario tiene su propia vista — redirección de seguridad
   if (usuario?.rol === 'operario') {
@@ -30,6 +32,7 @@ export const AppLayout = () => {
     <div className="flex min-h-screen w-full bg-background">
       <Sidebar />
       <div className="flex-1 flex flex-col min-w-0">
+        <OfflineBanner />
         <Header title={title} />
         <main className="flex-1 overflow-auto">
           <Outlet />

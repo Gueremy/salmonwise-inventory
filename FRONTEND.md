@@ -272,66 +272,87 @@ const ESTADO_COLOR: Record<string, string> = {
 ## 📊 Estado Actual — Mayo 2026
 
 ```
-FRONTEND GLOBAL: 42% completado
-Última actualización: 2026-05-14 — Sprint SF1 COMPLETADO
+FRONTEND GLOBAL: 95% completado
+Última actualización: 2026-05-15 — Sprint SF6 COMPLETADO
 
-✅ SF1 COMPLETADO (sesiones 1-4):
+✅ SF6 COMPLETADO:
+   src/hooks/useReportes.ts        ✅ descarga blob pdf/excel/sernapesca
+   src/pages/Usuarios.tsx          ✅ react-table, rol en español, asignar galpones
+   src/pages/Configuracion.tsx     ✅ cambio contraseña Zod, perfil readonly, tema
+   src/pages/Gerencia.tsx          ✅ datos reales, reportes descargables
+   App.tsx                         ✅ lazy loading todas las páginas, rutas /usuarios /configuracion
+
+✅ SF5 COMPLETADO:
+   src/lib/db.ts                   ✅ Dexie AxiousDB — movimientos_offline
+   src/hooks/useOnlineStatus.ts    ✅ navigator.onLine + event listeners
+   src/hooks/useSync.ts            ✅ usePendingCount + auto-sync al reconectar
+   src/components/OfflineBanner.tsx ✅ banner fijo offline, auto-dismiss 3s
+   src/components/SyncStatus.tsx   ✅ indicador 4 estados en Header
+   vite.config.ts                  ✅ VitePWA — name: AXIOUS, theme_color: #0F4A6E
+   dexie@4.0.1 + vite-plugin-pwa   ✅ instalados
+
+✅ SF4 COMPLETADO:
+   src/hooks/useMovimientos.ts     ✅ pendientes + fefo + trazabilidad + mutaciones
+   src/hooks/useDebounce.ts        ✅ hook genérico debounce
+   src/components/MovimientoForm.tsx ✅ wizard 3 pasos + Zod + campos SERNAPESCA
+   src/components/QrScanner.tsx    ✅ @zxing/browser, overlay, permisos en español
+   src/components/TrazabilidadBusqueda.tsx ✅ debounce 500ms, timeline, sin RUT
+   src/pages/Movimientos.tsx       ✅ react-table, filtros, paginación server-side
+   @zxing/browser + @tanstack/react-table ✅ instalados
+
+✅ SF3 COMPLETADO:
+   src/hooks/useSedes.ts           ✅ useSedes + useSede + mutaciones
+   src/hooks/useGalpones.ts        ✅ useGalpones + useGalon + mutaciones
+   src/hooks/useContainers.ts      ✅ useContainers + useContainer + QR + estado
+   src/pages/Sedes.tsx             ✅ datos reales, skeleton, sin mock
+   src/pages/SedeDetalle.tsx       ✅ tabs Galpones/Estadísticas, datos reales
+   src/pages/GalponDetalle.tsx     ✅ 3D lazy + ContainerInfoPanel + filtros
+   src/components/three/GalponScene.tsx ✅ datos reales, InstancedMesh >50 containers
+   src/components/ContainerInfoPanel.tsx ✅ "Vence en N días", progress bar, tokens CSS
+   src/components/StatusLegend.tsx ✅ conteos reales por estado
+   src/styles/tokens.css           ✅ 34 design tokens — paleta completa
+
+✅ SF2 COMPLETADO:
+   src/hooks/useDashboard.ts   ✅ TanStack Query kpis + ocupacion + evolucion
+   src/hooks/useAlertas.ts     ✅ activas + historial + marcarRevisada + resolver
+   src/hooks/useWebSocket.ts   ✅ WSS con exponential backoff + invalidate queries
+   Dashboard.tsx               ✅ datos reales, sin mock, skeleton loading
+   Alertas.tsx                 ✅ datos reales agrupados por severidad
+   Inventario.tsx              ✅ sedes reales desde API, sin mock
+   src/lib/utils.ts            ✅ tiempoRelativo() helper
+   App.tsx                     ✅ queryClient.setQueryDefaults por tipo
+
+✅ SF1 COMPLETADO:
    src/lib/apiClient.ts            ✅ axios + interceptores JWT + auto-refresh 401
    src/store/authStore.ts          ✅ Zustand persist, tipado completo
    Login.tsx                       ✅ POST /auth/login → GET /auth/me → navegar por rol
    src/components/PrivateRoute.tsx ✅ guarda rutas por isAuthenticated + rol
-   App.tsx                         ✅ rutas por rol con PrivateRoute
    src/hooks/useAuth.ts            ✅ logout real + navigateByRol
    src/context/RoleContext.tsx     ✅ lee de authStore, sin mock
-   Header.tsx                      ✅ usuario real, logout real, sin mock
+   Header.tsx                      ✅ usuario real, logout real, SyncStatus
    Sidebar.tsx                     ✅ filtra items por rol real, sin mock
-   AppLayout.tsx                   ✅ usa authStore, sin useRole
+   AppLayout.tsx                   ✅ usa authStore + OfflineBanner
    src/types/index.ts              ✅ tipos de dominio centralizados
-   Operario.tsx                    ✅ usa authStore, eliminado role-switcher mock
+   Operario.tsx                    ✅ usa authStore, sin role-switcher mock
    axios@1.7 + zustand@4.5         ✅ instalados
 
-✅ EXISTE Y FUNCIONA (pre-SF1):
-   React Router v6 con todas las rutas definidas
-   GalponScene.tsx — 3D con hover/select animado (datos mock)
-   SedeScene.tsx — visualización 3D de sede (datos mock)
-   MovimientoForm.tsx — UI sin submit real
-   Shadcn/ui — todos los componentes instalados
-   TanStack Query v5 configurado
-   Recharts configurado
-   Zod instalado
+⏸ PENDIENTE ANTES DE DEPLOY (SF6-7 + SF6-8):
+   SF6-7 → Limpieza build producción:
+     npm uninstall lovable-tagger
+     grep -r "from.*mock" src/ --include="*.tsx" --include="*.ts"
+     Solo debe quedar en src/types/
+     npm run build   ← confirmar 0 errores post-limpieza
+   SF6-8 → Deploy Vercel:
+     VITE_API_URL=https://axious-backend.onrender.com
+     vercel.json: { "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }] }
 
-⚠️ EXISTE PERO ES MOCK (reemplazar por orden de sprint):
-   Dashboard.tsx        → KPIs hardcodeados       ← SF2
-   Alertas.tsx          → datos hardcodeados       ← SF2
-   Sedes.tsx            → datos hardcodeados       ← SF3
-   SedeDetalle.tsx      → datos hardcodeados       ← SF3
-   GalponDetalle.tsx    → datos hardcodeados       ← SF3
-   Gerencia.tsx         → datos hardcodeados       ← SF6
-   MovimientoForm.tsx   → sin submit real          ← SF4
-
-❌ NO EXISTE (crear por orden de sprint):
-   src/hooks/useDashboard.ts       ← SF2
-   src/hooks/useWebSocket.ts       ← SF2
-   src/hooks/useAlertas.ts         ← SF2
-   src/hooks/useSedes.ts           ← SF3
-   src/hooks/useGalpones.ts        ← SF3
-   src/hooks/useContainers.ts      ← SF3
-   src/hooks/useMovimientos.ts     ← SF4
-   src/lib/db.ts (Dexie)           ← SF5
-   src/hooks/useSync.ts            ← SF5
-   src/hooks/useOnlineStatus.ts    ← SF5
-   src/hooks/useReportes.ts        ← SF6
-
-❌ DEPENDENCIAS NO INSTALADAS:
-   @zxing/browser        → instalar en SF4
-   @tanstack/react-table → instalar en SF4
-   dexie                 → instalar en SF5
-   vite-plugin-pwa       → instalar en SF5
-
-⏸ PAUSA RECOMENDADA (antes de SF2):
-   Probar login real contra https://axious-backend.onrender.com
-   Verificar navegación por rol (operario/gerencia/admin/jefe_bodega)
-   Verificar logout y redirect a /
+⏸ PRUEBAS RECOMENDADAS ANTES DE ENTREGAR:
+   Login real contra https://axious-backend.onrender.com
+   Navegación por rol (operario/gerencia/admin_sede/jefe_bodega/super_admin)
+   Flujo completo: escanear QR → registrar movimiento → aprobar/rechazar
+   Modo offline: crear movimiento → desconectar → reconectar → auto-sync
+   Descarga reportes PDF/Excel
+   Vista 3D GalponScene con datos reales (>50 containers → InstancedMesh)
 ```
 
 ---
@@ -1000,6 +1021,6 @@ style={{ color: '#DC2626' }}  // usar tokens CSS: text-[--color-status-critico]
 ---
 
 *FRONTEND.md — Actualizar al iniciar cada nuevo sprint*
-*Última actualización: 2026-05-14 — Sprint SF1 COMPLETADO · SF2 siguiente*
+*Última actualización: 2026-05-15 — Sprint SF6 COMPLETADO · Pendiente: limpieza + deploy Vercel*
 *Backend: https://axious-backend.onrender.com*
 *Skills: creative-design/3d-web-experience · development/senior-frontend*

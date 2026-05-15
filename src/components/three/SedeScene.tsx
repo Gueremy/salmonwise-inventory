@@ -3,7 +3,7 @@ import { Canvas, useFrame } from "@react-three/fiber";
 import { OrbitControls, Html, Edges, Float } from "@react-three/drei";
 import * as THREE from "three";
 import { useNavigate } from "react-router-dom";
-import { Galpon, ocupacionToEstado, estadoColor, TipoSede } from '@/types';
+import { Galpon, ocupacionToEstado, estadoColorHex, TipoSede } from '@/types';
 
 interface Props {
   galpones: Galpon[];
@@ -15,7 +15,7 @@ const GalponBox = ({ g, position, onClick }: { g: Galpon; position: [number, num
   const ref = useRef<THREE.Mesh>(null);
   const [hovered, setHovered] = useState(false);
   const estado = ocupacionToEstado(g.ocupacion_prom);
-  const color = estadoColor[estado];
+  const color = estadoColorHex[estado];
 
   useFrame((_, dt) => {
     if (ref.current) {
