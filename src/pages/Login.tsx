@@ -52,12 +52,15 @@ export default function Login() {
     }
 
     try {
+      const body = new URLSearchParams();
+      body.append('username', formData.email);
+      body.append('password', formData.password);
+
       const { data: auth } = await apiClient.post<{
         access_token: string;
         refresh_token: string;
-      }>('/auth/login', {
-        email:    formData.email,
-        password: formData.password,
+      }>('/auth/login', body, {
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       });
 
       setTokens(auth.access_token, auth.refresh_token);
