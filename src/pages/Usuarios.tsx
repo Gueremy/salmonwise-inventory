@@ -228,7 +228,7 @@ export default function Usuarios() {
           </div>
         ) : isError ? (
           <p className="p-6 text-sm text-center" style={{ color: 'var(--color-status-critico)' }}>
-            No se pudieron cargar los usuarios. Verifica tu conexión.
+            No se pudieron cargar los usuarios. El servidor puede estar caído o sin permiso para este rol.
           </p>
         ) : (
           <div className="overflow-x-auto">

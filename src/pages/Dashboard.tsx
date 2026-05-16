@@ -299,7 +299,7 @@ export default function Dashboard() {
                   <td className="px-5 py-3 text-muted-foreground">{i + 1}</td>
                   <td className="px-5 py-3 font-medium">{m.nombre_producto ?? '-'}</td>
                   <td className="px-5 py-3 text-muted-foreground">{tipoMovimientoLabel[m.tipo]}</td>
-                  <td className="px-5 py-3">{m.codigo_empleado_creador}</td>
+                  <td className="px-5 py-3">{m.codigo_empleado_creador ?? '-'}</td>
                   <td className="px-5 py-3">{m.codigo_container ?? '-'}</td>
                   <td className="px-5 py-3 text-muted-foreground">{tiempoRelativo(m.created_at)}</td>
                   <td className="px-5 py-3 text-right space-x-2">

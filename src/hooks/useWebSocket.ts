@@ -9,12 +9,16 @@ interface WsAlertaMessage {
 }
 
 function buildWsUrl(apiUrl: string, idSede: string, token: string): string {
-  const wsBase = apiUrl.replace(/^https/, 'wss').replace(/^http/, 'ws');
+  const base = (apiUrl.includes('vercel.app') || apiUrl.startsWith('/'))
+    ? 'https://axious-backend.onrender.com'
+    : apiUrl;
+  const wsBase = base.replace(/^https/, 'wss').replace(/^http/, 'ws');
   return `${wsBase}/ws/alertas/${idSede}?token=${token}`;
 }
 
 const MIN_DELAY_MS = 1_000;
 const MAX_DELAY_MS = 30_000;
+const MAX_RETRIES = 5;
 
 export function useWebSocket(): void {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
@@ -25,6 +29,7 @@ export function useWebSocket(): void {
   const retryRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const delayRef = useRef<number>(MIN_DELAY_MS);
   const unmountedRef = useRef(false);
+  const retryCountRef = useRef<number>(0);
 
   useEffect(() => {
     unmountedRef.current = false;
@@ -63,6 +68,8 @@ export function useWebSocket(): void {
 
       ws.onclose = () => {
         if (unmountedRef.current) return;
+        retryCountRef.current += 1;
+        if (retryCountRef.current >= MAX_RETRIES) return;
         const delay = delayRef.current;
         delayRef.current = Math.min(delay * 2, MAX_DELAY_MS);
         retryRef.current = setTimeout(connect, delay);
