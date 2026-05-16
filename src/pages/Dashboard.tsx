@@ -25,7 +25,8 @@ import { useAuthStore } from '@/store/authStore';
 import { apiClient } from '@/lib/apiClient';
 import { estadoColorHex, ocupacionToEstado } from '@/types';
 import { tiempoRelativo } from '@/lib/utils';
-import type { Movimiento } from '@/types';
+import type { MovimientoAPI, Paginated } from '@/types';
+import { tipoMovimientoLabel } from '@/types';
 
 interface KpiCardProps {
   label: string;
@@ -73,13 +74,13 @@ export default function Dashboard() {
   const { kpis, ocupacion, evolucion, isLoading, isError } = useDashboard();
   const { activas } = useAlertas();
 
-  const movimientosPendientesQuery = useQuery<Movimiento[]>({
+  const movimientosPendientesQuery = useQuery<MovimientoAPI[]>({
     queryKey: ['movimientos', 'pendientes', idSede],
     queryFn: async () => {
-      const { data } = await apiClient.get<Movimiento[]>('/movimientos/pendientes', {
+      const { data } = await apiClient.get<Paginated<MovimientoAPI> | MovimientoAPI[]>('/movimientos/pendientes', {
         params: { id_sede: idSede },
       });
-      return data;
+      return Array.isArray(data) ? data : data.items;
     },
     enabled: !!idSede,
     staleTime: 15_000,
@@ -296,11 +297,11 @@ export default function Dashboard() {
               {pendientes.map((m, i) => (
                 <tr key={m.id} className="border-t border-border hover:bg-muted/30 transition">
                   <td className="px-5 py-3 text-muted-foreground">{i + 1}</td>
-                  <td className="px-5 py-3 font-medium">{m.producto}</td>
-                  <td className="px-5 py-3 capitalize text-muted-foreground">{m.tipo.replace(/_/g, ' ')}</td>
-                  <td className="px-5 py-3">{m.operario}</td>
-                  <td className="px-5 py-3">{m.galpon}</td>
-                  <td className="px-5 py-3 text-muted-foreground">{m.hora}</td>
+                  <td className="px-5 py-3 font-medium">{m.nombre_producto ?? '-'}</td>
+                  <td className="px-5 py-3 text-muted-foreground">{tipoMovimientoLabel[m.tipo]}</td>
+                  <td className="px-5 py-3">{m.codigo_empleado_creador}</td>
+                  <td className="px-5 py-3">{m.codigo_container ?? '-'}</td>
+                  <td className="px-5 py-3 text-muted-foreground">{tiempoRelativo(m.created_at)}</td>
                   <td className="px-5 py-3 text-right space-x-2">
                     <Button
                       size="sm"

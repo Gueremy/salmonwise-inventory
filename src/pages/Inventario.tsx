@@ -3,17 +3,22 @@ import { useQuery } from '@tanstack/react-query';
 import { Boxes } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { apiClient } from '@/lib/apiClient';
-import type { TipoSede } from '@/types';
+import type { TipoSede, Paginated } from '@/types';
 
 interface SedeApi {
   id: string;
   nombre: string;
   tipo: TipoSede;
+  estado: 'activo' | 'inactivo';
 }
 
 interface KpiData {
   alertas_activas: number;
 }
+
+const tipoLabel: Record<string, string> = {
+  ponton: 'Pontón', planta: 'Planta', bodega: 'Bodega', embarcacion: 'Embarcación',
+};
 
 function SedeCard({ sede }: { sede: SedeApi }) {
   const kpisQuery = useQuery<KpiData>({
@@ -43,7 +48,7 @@ function SedeCard({ sede }: { sede: SedeApi }) {
           </span>
         )}
       </div>
-      <div className="text-xs text-muted-foreground capitalize">{sede.tipo}</div>
+      <div className="text-xs text-muted-foreground">{tipoLabel[sede.tipo] ?? sede.tipo}</div>
     </Link>
   );
 }
@@ -52,10 +57,10 @@ export default function Inventario() {
   const sedesQuery = useQuery<SedeApi[]>({
     queryKey: ['sedes'],
     queryFn: async () => {
-      const { data } = await apiClient.get<SedeApi[]>('/sedes/', {
+      const { data } = await apiClient.get<Paginated<SedeApi>>('/sedes/', {
         params: { skip: 0, limit: 20 },
       });
-      return data;
+      return data.items;
     },
     staleTime: 15 * 60 * 1000,
   });

@@ -131,14 +131,14 @@ export default function Configuracion() {
         <form onSubmit={handleSubmit(onSubmitPassword)} className="space-y-4">
           <div className="space-y-1.5">
             <Label>Contraseña actual *</Label>
-            <Input type="password" {...register('contrasena_actual')} />
+            <Input type="password" autoComplete="current-password" {...register('contrasena_actual')} />
             {errors.contrasena_actual && (
               <p className="text-xs text-destructive">{errors.contrasena_actual.message}</p>
             )}
           </div>
           <div className="space-y-1.5">
             <Label>Nueva contraseña *</Label>
-            <Input type="password" {...register('nueva_contrasena')} />
+            <Input type="password" autoComplete="new-password" {...register('nueva_contrasena')} />
             {errors.nueva_contrasena && (
               <p className="text-xs text-destructive">{errors.nueva_contrasena.message}</p>
             )}
@@ -148,7 +148,7 @@ export default function Configuracion() {
           </div>
           <div className="space-y-1.5">
             <Label>Confirmar contraseña *</Label>
-            <Input type="password" {...register('confirmar_contrasena')} />
+            <Input type="password" autoComplete="new-password" {...register('confirmar_contrasena')} />
             {errors.confirmar_contrasena && (
               <p className="text-xs text-destructive">{errors.confirmar_contrasena.message}</p>
             )}
