@@ -7,7 +7,11 @@ import { useAuthStore } from '@/store/authStore';
 import { useAuth } from '@/hooks/useAuth';
 import { StatusBadge } from '@/components/StatusBadge';
 import { Input } from '@/components/ui/input';
+import { Skeleton } from '@/components/ui/skeleton';
 import { MovimientoForm } from '@/components/MovimientoForm';
+import { useGalpones } from '@/hooks/useGalpones';
+import { useContainers } from '@/hooks/useContainers';
+import type { ContainerAPI } from '@/types';
 
 interface ActionButtonProps {
   icon: React.ElementType;
@@ -29,14 +33,24 @@ const ActionButton = ({ icon: Icon, label, onClick, color }: ActionButtonProps) 
 export default function Operario() {
   const usuario        = useAuthStore((s) => s.usuario);
   const { logout }     = useAuth();
-  const [openMov, setOpenMov]   = useState(false);
-  const [online, setOnline]     = useState(true);
+  const [openMov, setOpenMov]         = useState(false);
+  const [selectedContainer, setSelectedContainer] = useState<ContainerAPI | undefined>();
+  const [online, setOnline]           = useState(true);
+  const [search, setSearch]           = useState('');
 
-  const items = [
-    { codigo: 'G1-C04', producto: 'Alimento 5mm',       ocup: 65, estado: 'medio'       as const },
-    { codigo: 'G1-C07', producto: 'Alimento 3mm',       ocup: 20, estado: 'disponible'  as const },
-    { codigo: 'G2-C11', producto: 'Químico limpiador',  ocup: 85, estado: 'critico'     as const },
-  ];
+  const idSede = usuario?.id_sede ?? '';
+  const galponesQuery = useGalpones(idSede);
+  const firstGalpon = galponesQuery.data?.[0];
+  const containersQuery = useContainers(firstGalpon?.id);
+
+  const filteredContainers = (containersQuery.data ?? []).filter((c) =>
+    !search || c.codigo.toLowerCase().includes(search.toLowerCase()) || c.nombre_producto?.toLowerCase().includes(search.toLowerCase())
+  );
+
+  const openMovimientoForm = (c?: ContainerAPI) => {
+    setSelectedContainer(c);
+    setOpenMov(true);
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -80,41 +94,70 @@ export default function Operario() {
       <main className="p-4 space-y-5 max-w-xl mx-auto">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input className="pl-9 h-12 text-base" placeholder="Buscar container o producto" />
+          <Input
+            className="pl-9 h-12 text-base"
+            placeholder="Buscar container o producto"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
         </div>
 
         <div className="grid grid-cols-2 gap-3">
-          <ActionButton icon={ArrowDownToLine} label="Registrar Entrada" onClick={() => setOpenMov(true)} color="bg-status-disponible" />
-          <ActionButton icon={ArrowUpFromLine} label="Registrar Salida"  onClick={() => setOpenMov(true)} color="bg-secondary" />
-          <ActionButton icon={RefreshCw}       label="Traslado"          onClick={() => setOpenMov(true)} color="bg-primary" />
-          <ActionButton icon={QrCode}          label="Escanear QR"       onClick={() => {}}               color="bg-status-cuarentena" />
+          <ActionButton icon={ArrowDownToLine} label="Registrar Entrada" onClick={() => openMovimientoForm()} color="bg-status-disponible" />
+          <ActionButton icon={ArrowUpFromLine} label="Registrar Salida"  onClick={() => openMovimientoForm()} color="bg-secondary" />
+          <ActionButton icon={RefreshCw}       label="Traslado"          onClick={() => openMovimientoForm()} color="bg-primary" />
+          <ActionButton icon={QrCode}          label="Escanear QR"       onClick={() => {}}                    color="bg-status-cuarentena" />
         </div>
 
         <div>
-          <h3 className="font-semibold text-sm mb-2 px-1">Mis containers asignados hoy</h3>
-          <div className="space-y-2">
-            {items.map((it) => (
-              <div key={it.codigo} className="bg-card rounded-lg border border-border p-4 flex items-center justify-between">
-                <div>
-                  <div className="font-bold">{it.codigo}</div>
-                  <div className="text-xs text-muted-foreground">{it.producto}</div>
-                </div>
-                <div className="text-right space-y-1">
-                  <div className="text-sm font-semibold">{it.ocup}%</div>
-                  <StatusBadge estado={it.estado} />
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
+          <h3 className="font-semibold text-sm mb-2 px-1">
+            Containers en {firstGalpon?.nombre ?? usuario?.sede_nombre ?? 'tu sede'}
+          </h3>
 
-        <div className="bg-status-medio/10 border border-status-medio/30 rounded-lg p-4">
-          <div className="text-sm font-semibold text-status-medio">⚠️ 2 movimientos rechazados</div>
-          <div className="text-xs text-muted-foreground mt-0.5">Toca para revisar y reenviar</div>
+          {galponesQuery.isLoading || containersQuery.isLoading ? (
+            <div className="space-y-2">
+              {[...Array(3)].map((_, i) => (
+                <div key={i} className="bg-card rounded-lg border border-border p-4">
+                  <Skeleton className="h-4 w-24 mb-2" />
+                  <Skeleton className="h-3 w-32" />
+                </div>
+              ))}
+            </div>
+          ) : filteredContainers.length === 0 ? (
+            <div className="bg-muted/40 rounded-lg border border-border p-6 text-center text-sm text-muted-foreground">
+              {search ? 'Sin resultados para esa búsqueda.' : 'Sin containers en este galpón.'}
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {filteredContainers.map((c) => {
+                const pct = c.capacidad_max > 0 ? Math.round((c.ocupacion_actual / c.capacidad_max) * 100) : 0;
+                return (
+                  <button
+                    key={c.id}
+                    onClick={() => openMovimientoForm(c)}
+                    className="w-full text-left bg-card rounded-lg border border-border p-4 flex items-center justify-between hover:border-primary/50 transition active:scale-[.98]"
+                  >
+                    <div>
+                      <div className="font-bold">{c.codigo}</div>
+                      <div className="text-xs text-muted-foreground">{c.nombre_producto ?? 'Sin producto'}</div>
+                    </div>
+                    <div className="text-right space-y-1">
+                      <div className="text-sm font-semibold">{pct}%</div>
+                      <StatusBadge estado={c.estado} />
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
       </main>
 
-      <MovimientoForm open={openMov} onOpenChange={setOpenMov} />
+      <MovimientoForm
+        open={openMov}
+        onOpenChange={(v) => { setOpenMov(v); if (!v) setSelectedContainer(undefined); }}
+        container={selectedContainer}
+      />
     </div>
   );
 }

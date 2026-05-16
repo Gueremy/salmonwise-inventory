@@ -15,7 +15,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { MovStatusBadge } from "@/components/StatusBadge";
 import { TrazabilidadBusqueda } from "@/components/TrazabilidadBusqueda";
 import { Search, FileText, FileSpreadsheet, ArrowUpDown, QrCode } from "lucide-react";
-import type { MovimientoAPI, TipoMovimiento, EstadoMovimiento } from "@/types";
+import type { MovimientoAPI, TipoMovimiento, EstadoMovimiento, Paginated } from "@/types";
 import { tipoMovimientoLabel, estadoMovimientoLabel } from "@/types";
 import { format, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
@@ -50,8 +50,8 @@ function useMovimientosLista(filters: Filters) {
       if (filters.estado) params.estado = filters.estado;
       if (filters.desde)  params.desde  = filters.desde;
       if (filters.hasta)  params.hasta  = filters.hasta;
-      const { data } = await apiClient.get<MovimientoAPI[]>('/movimientos/', { params });
-      return data;
+      const { data } = await apiClient.get<Paginated<MovimientoAPI> | MovimientoAPI[]>('/movimientos/', { params });
+      return Array.isArray(data) ? data : data.items;
     },
     staleTime: 30_000,
     placeholderData: (prev) => prev,

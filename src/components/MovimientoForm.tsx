@@ -7,11 +7,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowDownToLine, ArrowUpFromLine, RefreshCw, ShieldCheck, ChevronRight, ChevronLeft, Check } from "lucide-react";
+import { ArrowDownToLine, ArrowUpFromLine, RefreshCw, ShieldCheck, ChevronRight, ChevronLeft, Check, Search } from "lucide-react";
 import { toast } from "sonner";
 import { useCreateMovimiento } from "@/hooks/useMovimientos";
-import type { ContainerAPI } from "@/types";
+import { apiClient } from "@/lib/apiClient";
+import type { ContainerAPI, Paginated } from "@/types";
 
 const schema = z.object({
   tipo: z.enum(['entrada_proveedor', 'salida_produccion', 'traslado_interno']),
@@ -39,7 +39,6 @@ const schema = z.object({
 });
 
 type FormData = z.infer<typeof schema>;
-
 type TipoMov = 'entrada_proveedor' | 'salida_produccion' | 'traslado_interno';
 
 const TIPOS: { id: TipoMov; label: string; icon: React.ComponentType<{ className?: string }>; desc: string }[] = [
@@ -58,27 +57,61 @@ interface Props {
 
 export const MovimientoForm = ({ open, onOpenChange, container }: Props) => {
   const [step, setStep] = useState(0);
+  const [containerCode, setContainerCode] = useState('');
+  const [resolvedContainer, setResolvedContainer] = useState<ContainerAPI | null>(null);
+  const [isSearching, setIsSearching] = useState(false);
+  const [searchError, setSearchError] = useState('');
   const createMovimiento = useCreateMovimiento();
 
-  const { register, handleSubmit, watch, setValue, getValues, formState: { errors } } = useForm<FormData>({
+  const { register, handleSubmit, watch, setValue, trigger, getValues, formState: { errors } } = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: { tipo: 'entrada_proveedor', unidad: 'kg' },
   });
 
   const tipo = watch('tipo');
   const isSernapesca = tipo === 'entrada_proveedor';
+  const effectiveContainer = container ?? resolvedContainer;
+
+  const searchContainer = async () => {
+    const code = containerCode.trim();
+    if (!code) return;
+    setIsSearching(true);
+    setSearchError('');
+    setResolvedContainer(null);
+    try {
+      const { data } = await apiClient.get<Paginated<ContainerAPI> | ContainerAPI[]>('/containers/', {
+        params: { codigo: code, limit: 5 },
+      });
+      const items = Array.isArray(data) ? data : data.items;
+      const match = items.find((c) => c.codigo.toLowerCase() === code.toLowerCase()) ?? items[0];
+      if (!match) {
+        setSearchError(`No se encontró el container "${code}".`);
+      } else {
+        setResolvedContainer(match);
+      }
+    } catch {
+      setSearchError('Error buscando container. Verifica la conexión.');
+    } finally {
+      setIsSearching(false);
+    }
+  };
 
   const onSubmit = (data: FormData) => {
-    if (!container) return;
+    if (!effectiveContainer) {
+      toast.error('Selecciona un container antes de registrar.');
+      return;
+    }
     const toastId = toast.loading('Guardando movimiento...');
     createMovimiento.mutate(
-      { ...data, id_container: container.id },
+      { ...data, id_container: effectiveContainer.id },
       {
         onSuccess: () => {
           toast.dismiss(toastId);
           toast.success('Movimiento registrado correctamente.');
           onOpenChange(false);
           setStep(0);
+          setResolvedContainer(null);
+          setContainerCode('');
         },
         onError: () => {
           toast.dismiss(toastId);
@@ -88,22 +121,41 @@ export const MovimientoForm = ({ open, onOpenChange, container }: Props) => {
     );
   };
 
-  const goNext = () => {
-    if (step < STEPS.length - 1) setStep((s) => s + 1);
+  const goNext = async () => {
+    if (step === 0) {
+      if (!effectiveContainer) {
+        toast.error('Busca y selecciona un container antes de continuar.');
+        return;
+      }
+    }
+    if (step === 1) {
+      const valid = await trigger();
+      if (!valid) return;
+    }
+    setStep((s) => s + 1);
   };
 
   const goBack = () => {
     if (step > 0) setStep((s) => s - 1);
   };
 
+  const handleClose = (v: boolean) => {
+    onOpenChange(v);
+    if (!v) {
+      setStep(0);
+      setResolvedContainer(null);
+      setContainerCode('');
+      setSearchError('');
+    }
+  };
+
   return (
-    <Dialog open={open} onOpenChange={(v) => { onOpenChange(v); if (!v) setStep(0); }}>
+    <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Registrar movimiento</DialogTitle>
         </DialogHeader>
 
-        {/* Stepper */}
         <div className="flex items-center gap-2 mb-4">
           {STEPS.map((s, i) => (
             <div key={s} className="flex items-center gap-2">
@@ -126,7 +178,13 @@ export const MovimientoForm = ({ open, onOpenChange, container }: Props) => {
           {step === 0 && (
             <Step1
               container={container}
-              tipo={tipo}
+              resolvedContainer={resolvedContainer}
+              containerCode={containerCode}
+              setContainerCode={setContainerCode}
+              onSearch={searchContainer}
+              isSearching={isSearching}
+              searchError={searchError}
+              tipo={tipo as TipoMov}
               setTipo={(t) => setValue('tipo', t)}
             />
           )}
@@ -141,11 +199,11 @@ export const MovimientoForm = ({ open, onOpenChange, container }: Props) => {
           )}
 
           {step === 2 && (
-            <Step3 values={getValues()} container={container} />
+            <Step3 values={getValues()} container={effectiveContainer ?? undefined} />
           )}
 
           <div className="flex justify-between gap-2 pt-4 mt-4 border-t border-border">
-            <Button type="button" variant="outline" onClick={() => { if (step === 0) onOpenChange(false); else goBack(); }}>
+            <Button type="button" variant="outline" onClick={() => { if (step === 0) handleClose(false); else goBack(); }}>
               {step === 0 ? 'Cancelar' : <><ChevronLeft className="h-4 w-4 mr-1" /> Atrás</>}
             </Button>
             {step < STEPS.length - 1 ? (
@@ -153,7 +211,12 @@ export const MovimientoForm = ({ open, onOpenChange, container }: Props) => {
                 Siguiente <ChevronRight className="h-4 w-4 ml-1" />
               </Button>
             ) : (
-              <Button type="submit" className="min-h-[56px] text-base px-6" style={{ backgroundColor: 'var(--color-action-primary)' }} disabled={createMovimiento.isPending}>
+              <Button
+                type="submit"
+                className="min-h-[56px] text-base px-6"
+                style={{ backgroundColor: 'var(--color-action-primary)' }}
+                disabled={createMovimiento.isPending || !effectiveContainer}
+              >
                 {createMovimiento.isPending ? 'Guardando...' : 'Confirmar y registrar'}
               </Button>
             )}
@@ -166,39 +229,73 @@ export const MovimientoForm = ({ open, onOpenChange, container }: Props) => {
 
 interface Step1Props {
   container?: ContainerAPI;
+  resolvedContainer?: ContainerAPI | null;
+  containerCode: string;
+  setContainerCode: (s: string) => void;
+  onSearch: () => void;
+  isSearching: boolean;
+  searchError: string;
   tipo: TipoMov;
   setTipo: (t: TipoMov) => void;
 }
 
-const Step1 = ({ container, tipo, setTipo }: Step1Props) => (
-  <div className="space-y-4">
-    {container && (
-      <div className="bg-muted/40 rounded-md px-4 py-3 text-sm">
-        Container seleccionado: <span className="font-semibold">{container.codigo}</span>
-        {container.nombre_producto && <> · <span className="text-muted-foreground">{container.nombre_producto}</span></>}
-      </div>
-    )}
-    <div>
-      <Label className="mb-2 block">Tipo de movimiento</Label>
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-        {TIPOS.map((t) => (
-          <button
-            key={t.id}
-            type="button"
-            onClick={() => setTipo(t.id)}
-            className={`text-left p-3 rounded-md border-2 transition ${
-              tipo === t.id ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/40'
-            }`}
-          >
-            <t.icon className={`h-5 w-5 mb-1.5 ${tipo === t.id ? 'text-primary' : 'text-muted-foreground'}`} />
-            <div className="text-sm font-semibold">{t.label}</div>
-            <div className="text-[11px] text-muted-foreground">{t.desc}</div>
-          </button>
-        ))}
+const Step1 = ({ container, resolvedContainer, containerCode, setContainerCode, onSearch, isSearching, searchError, tipo, setTipo }: Step1Props) => {
+  const effectiveContainer = container ?? resolvedContainer;
+
+  return (
+    <div className="space-y-4">
+      {!container && (
+        <div className="space-y-2">
+          <Label>Container *</Label>
+          <div className="flex gap-2">
+            <Input
+              placeholder="Código del container (ej: G1-C04)"
+              value={containerCode}
+              onChange={(e) => setContainerCode(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); onSearch(); } }}
+            />
+            <Button type="button" variant="outline" onClick={onSearch} disabled={isSearching || !containerCode.trim()}>
+              <Search className="h-4 w-4" />
+            </Button>
+          </div>
+          {searchError && <p className="text-xs text-destructive">{searchError}</p>}
+        </div>
+      )}
+
+      {effectiveContainer && (
+        <div className="bg-muted/40 rounded-md px-4 py-3 text-sm">
+          Container seleccionado: <span className="font-semibold">{effectiveContainer.codigo}</span>
+          {effectiveContainer.nombre_producto && (
+            <> · <span className="text-muted-foreground">{effectiveContainer.nombre_producto}</span></>
+          )}
+          <span className="ml-2 text-xs text-muted-foreground">
+            Ocupación: {effectiveContainer.ocupacion_actual}/{effectiveContainer.capacidad_max}
+          </span>
+        </div>
+      )}
+
+      <div>
+        <Label className="mb-2 block">Tipo de movimiento</Label>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+          {TIPOS.map((t) => (
+            <button
+              key={t.id}
+              type="button"
+              onClick={() => setTipo(t.id)}
+              className={`text-left p-3 rounded-md border-2 transition ${
+                tipo === t.id ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/40'
+              }`}
+            >
+              <t.icon className={`h-5 w-5 mb-1.5 ${tipo === t.id ? 'text-primary' : 'text-muted-foreground'}`} />
+              <div className="text-sm font-semibold">{t.label}</div>
+              <div className="text-[11px] text-muted-foreground">{t.desc}</div>
+            </button>
+          ))}
+        </div>
       </div>
     </div>
-  </div>
-);
+  );
+};
 
 interface Step2Props {
   register: ReturnType<typeof useForm<FormData>>['register'];
