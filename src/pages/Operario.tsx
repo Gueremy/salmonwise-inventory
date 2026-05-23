@@ -1,24 +1,23 @@
-import { useState } from "react";
-import { Box, ArrowDownToLine, ArrowUpFromLine, RefreshCw, QrCode, Wifi, WifiOff, Search, ChevronDown, LogOut } from "lucide-react";
+import { useMemo, useState } from "react";
+import { Box, ArrowDownToLine, ArrowUpFromLine, RefreshCw, QrCode, Wifi, WifiOff, Search, LogOut } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { useRole } from "@/context/RoleContext";
-import { usuarios, rolLabel } from "@/data/mock";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { MovimientoForm } from "@/components/MovimientoForm";
-import { useNavigate } from "react-router-dom";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { useInventorySnapshot } from "@/hooks/use-inventory-snapshot";
 
 export default function Operario() {
-  const { usuario, setUsuario, online, setOnline } = useRole();
+  const { usuario, online, logout } = useRole();
+  const inventoryQuery = useInventorySnapshot();
   const [openMov, setOpenMov] = useState(false);
   const navigate = useNavigate();
 
-  const items = [
-    { codigo: "G1-C04", producto: "Alimento 5mm", ocup: 65, estado: "medio" as const },
-    { codigo: "G1-C07", producto: "Alimento 3mm", ocup: 20, estado: "disponible" as const },
-    { codigo: "G2-C11", producto: "Químico limpiador", ocup: 85, estado: "critico" as const },
-  ];
+  const items = useMemo(
+    () => (inventoryQuery.data?.containers ?? []).slice(0, 6),
+    [inventoryQuery.data?.containers],
+  );
 
   return (
     <div className="min-h-screen bg-background">
@@ -34,53 +33,33 @@ export default function Operario() {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <button
-              onClick={() => setOnline(!online)}
+            <div
               className={`flex items-center gap-1 text-[11px] font-semibold px-2 py-1 rounded ${
                 online ? "bg-status-disponible text-white" : "bg-status-medio text-white"
               }`}
             >
               {online ? <Wifi className="h-3 w-3" /> : <WifiOff className="h-3 w-3" />}
               {online ? "ONLINE" : "OFFLINE"}
+            </div>
+            <button
+              onClick={() => {
+                logout();
+                navigate("/");
+              }}
+              className="p-1.5 rounded hover:bg-white/15"
+            >
+              <LogOut className="h-4 w-4" />
             </button>
-            <DropdownMenu>
-              <DropdownMenuTrigger className="p-1.5 rounded hover:bg-white/15">
-                <ChevronDown className="h-4 w-4" />
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56">
-                <DropdownMenuLabel>Cambiar rol (demo)</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                {usuarios.map((u) => (
-                  <DropdownMenuItem key={u.id} onClick={() => { setUsuario(u); if (u.rol !== "operario") navigate("/dashboard"); }}>
-                    <div>
-                      <div className="text-sm font-medium">{u.nombre}</div>
-                      <div className="text-xs text-muted-foreground">{rolLabel[u.rol]}</div>
-                    </div>
-                  </DropdownMenuItem>
-                ))}
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => navigate("/")} className="text-destructive">
-                  <LogOut className="h-4 w-4 mr-2" />Cerrar sesión
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
           </div>
         </div>
-        {!online && (
-          <div className="mt-2 text-[11px] bg-status-medio/30 rounded px-2 py-1.5 flex items-center gap-1.5">
-            <WifiOff className="h-3 w-3" /> Sin conexión — guardando movimientos localmente
-          </div>
-        )}
       </header>
 
       <main className="p-4 space-y-5 max-w-xl mx-auto">
-        {/* Búsqueda */}
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input className="pl-9 h-12 text-base" placeholder="Buscar container o producto" />
         </div>
 
-        {/* 4 botones grandes */}
         <div className="grid grid-cols-2 gap-3">
           <ActionButton icon={ArrowDownToLine} label="Registrar Entrada" onClick={() => setOpenMov(true)} color="bg-status-disponible" />
           <ActionButton icon={ArrowUpFromLine} label="Registrar Salida" onClick={() => setOpenMov(true)} color="bg-secondary" />
@@ -88,38 +67,38 @@ export default function Operario() {
           <ActionButton icon={QrCode} label="Escanear QR" onClick={() => {}} color="bg-status-cuarentena" />
         </div>
 
-        {/* Mis containers */}
         <div>
-          <h3 className="font-semibold text-sm mb-2 px-1">Mis containers asignados hoy</h3>
+          <h3 className="font-semibold text-sm mb-2 px-1">Containers visibles</h3>
           <div className="space-y-2">
-            {items.map((it) => (
-              <div key={it.codigo} className="bg-card rounded-lg border border-border p-4 flex items-center justify-between">
+            {items.map((item) => (
+              <div key={item.codigo} className="bg-card rounded-lg border border-border p-4 flex items-center justify-between">
                 <div>
-                  <div className="font-bold">{it.codigo}</div>
-                  <div className="text-xs text-muted-foreground">{it.producto}</div>
+                  <div className="font-bold">{item.codigo}</div>
+                  <div className="text-xs text-muted-foreground">{item.producto ?? item.tipoProductoPermitido}</div>
                 </div>
                 <div className="text-right space-y-1">
-                  <div className="text-sm font-semibold">{it.ocup}%</div>
-                  <StatusBadge estado={it.estado} />
+                  <div className="text-sm font-semibold">{item.ocupacion}%</div>
+                  <StatusBadge estado={item.estado} />
                 </div>
               </div>
             ))}
           </div>
         </div>
 
-        {/* Notificaciones */}
-        <div className="bg-status-medio/10 border border-status-medio/30 rounded-lg p-4">
-          <div className="text-sm font-semibold text-status-medio">⚠️ 2 movimientos rechazados</div>
-          <div className="text-xs text-muted-foreground mt-0.5">Toca para revisar y reenviar</div>
+        <div className="bg-secondary/10 border border-secondary/30 rounded-lg p-4">
+          <div className="text-sm font-semibold text-secondary">Registro de movimientos en linea</div>
+          <div className="text-xs text-muted-foreground mt-0.5">
+            Esta vista ya usa la misma API local que el resto del sistema.
+          </div>
         </div>
       </main>
 
-      <MovimientoForm open={openMov} onOpenChange={setOpenMov} />
+      <MovimientoForm open={openMov} onOpenChange={setOpenMov} availableContainers={items} />
     </div>
   );
 }
 
-const ActionButton = ({ icon: Icon, label, onClick, color }: any) => (
+const ActionButton = ({ icon: Icon, label, onClick, color }: { icon: typeof Box; label: string; onClick: () => void; color: string }) => (
   <button onClick={onClick} className={`${color} text-white rounded-lg p-5 flex flex-col items-center justify-center gap-2 h-28 active:scale-95 transition shadow-sm`}>
     <Icon className="h-7 w-7" />
     <span className="text-sm font-semibold text-center leading-tight">{label}</span>
