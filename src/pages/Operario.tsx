@@ -8,16 +8,26 @@ import { Button } from "@/components/ui/button";
 import { MovimientoForm } from "@/components/MovimientoForm";
 import { useInventorySnapshot } from "@/hooks/use-inventory-snapshot";
 
+type MovementType = "entrada_proveedor" | "salida_produccion" | "traslado_interno";
+
 export default function Operario() {
   const { usuario, online, logout } = useRole();
   const inventoryQuery = useInventorySnapshot();
   const [openMov, setOpenMov] = useState(false);
+  const [movementType, setMovementType] = useState<MovementType>("entrada_proveedor");
   const navigate = useNavigate();
 
   const items = useMemo(
     () => (inventoryQuery.data?.containers ?? []).slice(0, 6),
     [inventoryQuery.data?.containers],
   );
+  const canCreateMovements = !inventoryQuery.isLoading && !inventoryQuery.isError && items.length > 0;
+
+  const openMovementForm = (type: MovementType) => {
+    if (!canCreateMovements) return;
+    setMovementType(type);
+    setOpenMov(true);
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -61,9 +71,9 @@ export default function Operario() {
         </div>
 
         <div className="grid grid-cols-2 gap-3">
-          <ActionButton icon={ArrowDownToLine} label="Registrar Entrada" onClick={() => setOpenMov(true)} color="bg-status-disponible" />
-          <ActionButton icon={ArrowUpFromLine} label="Registrar Salida" onClick={() => setOpenMov(true)} color="bg-secondary" />
-          <ActionButton icon={RefreshCw} label="Traslado" onClick={() => setOpenMov(true)} color="bg-primary" />
+          <ActionButton icon={ArrowDownToLine} label="Registrar Entrada" onClick={() => openMovementForm("entrada_proveedor")} color="bg-status-disponible" disabled={!canCreateMovements} />
+          <ActionButton icon={ArrowUpFromLine} label="Registrar Salida" onClick={() => openMovementForm("salida_produccion")} color="bg-secondary" disabled={!canCreateMovements} />
+          <ActionButton icon={RefreshCw} label="Traslado" onClick={() => openMovementForm("traslado_interno")} color="bg-primary" disabled={!canCreateMovements} />
           <ActionButton icon={QrCode} label="Escanear QR" onClick={() => {}} color="bg-status-cuarentena" />
         </div>
 
@@ -88,18 +98,36 @@ export default function Operario() {
         <div className="bg-secondary/10 border border-secondary/30 rounded-lg p-4">
           <div className="text-sm font-semibold text-secondary">Registro de movimientos en linea</div>
           <div className="text-xs text-muted-foreground mt-0.5">
-            Esta vista ya usa la misma API local que el resto del sistema.
+            {inventoryQuery.isError
+              ? "La API no esta disponible para registrar movimientos en este momento."
+              : "Esta vista ya usa la misma API local que el resto del sistema."}
           </div>
         </div>
       </main>
 
-      <MovimientoForm open={openMov} onOpenChange={setOpenMov} availableContainers={items} />
+      <MovimientoForm open={openMov} onOpenChange={setOpenMov} availableContainers={items} initialTipo={movementType} />
     </div>
   );
 }
 
-const ActionButton = ({ icon: Icon, label, onClick, color }: { icon: typeof Box; label: string; onClick: () => void; color: string }) => (
-  <button onClick={onClick} className={`${color} text-white rounded-lg p-5 flex flex-col items-center justify-center gap-2 h-28 active:scale-95 transition shadow-sm`}>
+const ActionButton = ({
+  icon: Icon,
+  label,
+  onClick,
+  color,
+  disabled = false,
+}: {
+  icon: typeof Box;
+  label: string;
+  onClick: () => void;
+  color: string;
+  disabled?: boolean;
+}) => (
+  <button
+    onClick={onClick}
+    disabled={disabled}
+    className={`${color} text-white rounded-lg p-5 flex flex-col items-center justify-center gap-2 h-28 transition shadow-sm disabled:cursor-not-allowed disabled:opacity-50 enabled:active:scale-95`}
+  >
     <Icon className="h-7 w-7" />
     <span className="text-sm font-semibold text-center leading-tight">{label}</span>
   </button>

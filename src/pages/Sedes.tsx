@@ -1,14 +1,14 @@
 import { Link } from "react-router-dom";
 import { Ship, Factory, Warehouse, Bell, ArrowRight } from "lucide-react";
-import { sedes as fallbackSedes, galpones as fallbackGalpones, ocupacionToEstado, estadoColor } from "@/data/mock";
+import { ocupacionToEstado, estadoColor } from "@/data/mock";
 import { useInventorySnapshot } from "@/hooks/use-inventory-snapshot";
 
 const tipoIcon = { embarcacion: Ship, planta: Factory, bodega: Warehouse };
 
 export default function Sedes() {
   const inventoryQuery = useInventorySnapshot();
-  const sedes = inventoryQuery.data?.sedes ?? fallbackSedes;
-  const galpones = inventoryQuery.data?.galpones ?? fallbackGalpones;
+  const sedes = inventoryQuery.data?.sedes ?? [];
+  const galpones = inventoryQuery.data?.galpones ?? [];
   const alertasTotales = sedes.reduce((total, sede) => total + sede.alertas, 0);
   const ocupacionPromedio = sedes.length > 0 ? Math.round(sedes.reduce((total, sede) => total + sede.ocupacion, 0) / sedes.length) : 0;
 
@@ -19,9 +19,15 @@ export default function Sedes() {
           Vista global de las sedes de Skretting Los Lagos.
         </p>
         <p className="text-xs text-muted-foreground mt-1">
-          {inventoryQuery.data ? "Datos live desde FastAPI" : "Modo fallback con datos del prototipo"}
+          {inventoryQuery.isSuccess ? "Datos live desde FastAPI" : inventoryQuery.isError ? "No se pudieron cargar datos desde la API" : "Cargando datos live"}
         </p>
       </div>
+
+      {inventoryQuery.isError && (
+        <div className="rounded-lg border border-status-medio/30 bg-status-medio/10 px-4 py-3 text-sm text-status-medio">
+          La API no esta disponible en este momento. No se mostraran datos simulados para evitar decisiones sobre inventario incorrecto.
+        </div>
+      )}
 
       <div
         className="bg-card rounded-lg border border-border/60 shadow-sm p-6 mb-6 relative overflow-hidden"
@@ -75,6 +81,11 @@ export default function Sedes() {
               );
             })}
           </div>
+          {sedes.length === 0 && (
+            <div className="mt-4 rounded-md border border-dashed border-border p-4 text-sm text-muted-foreground">
+              No hay sedes disponibles para mostrar.
+            </div>
+          )}
         </div>
       </div>
 

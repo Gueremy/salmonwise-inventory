@@ -123,6 +123,31 @@ export interface ApiMovimientoListItem {
   galpon_codigo: string;
 }
 
+export interface ApiMovimientoRead {
+  id: string;
+  id_container: string;
+  id_producto: string;
+  id_usuario: string;
+  id_usuario_aprobador: string | null;
+  tipo: "entrada_proveedor" | "salida_produccion" | "traslado_interno" | "correccion";
+  estado: "pendiente" | "aprobado" | "rechazado";
+  cantidad: string;
+  numero_lote: string;
+  fecha_fabricacion: string | null;
+  fecha_vencimiento: string | null;
+  nombre_proveedor: string | null;
+  num_guia_despacho: string | null;
+  registro_sanitario: string | null;
+  temperatura_almacen: number | null;
+  num_receta_retenida: string | null;
+  num_autorizacion_sag: string | null;
+  fecha_hora: string;
+  fecha_aprobacion: string | null;
+  motivo_rechazo: string | null;
+  observaciones: string | null;
+  origen: string;
+}
+
 export interface MovimientoPayload {
   id_container: string;
   id_producto: string;
@@ -258,7 +283,7 @@ export async function fetchProductos(accessToken: string) {
 
 export async function fetchMovimientos(accessToken: string, query = "") {
   const suffix = query ? `?${query}` : "";
-  const response = await fetch(`${API_BASE_URL}/movimientos${suffix}`, {
+  const response = await fetch(`${API_BASE_URL}/movimientos/${suffix}`, {
     headers: {
       Authorization: `Bearer ${accessToken}`,
     },
@@ -277,7 +302,7 @@ export async function createMovimiento(accessToken: string, payload: MovimientoP
     body: JSON.stringify(payload),
   });
 
-  return parseJson<ApiMovimientoListItem>(response);
+  return parseJson<ApiMovimientoRead>(response);
 }
 
 export async function approveMovimiento(accessToken: string, id: string) {
@@ -288,7 +313,7 @@ export async function approveMovimiento(accessToken: string, id: string) {
     },
   });
 
-  return parseJson<ApiMovimientoListItem>(response);
+  return parseJson<ApiMovimientoRead>(response);
 }
 
 export async function rejectMovimiento(accessToken: string, id: string, motivo_rechazo: string) {
@@ -301,5 +326,5 @@ export async function rejectMovimiento(accessToken: string, id: string, motivo_r
     body: JSON.stringify({ motivo_rechazo }),
   });
 
-  return parseJson<ApiMovimientoListItem>(response);
+  return parseJson<ApiMovimientoRead>(response);
 }

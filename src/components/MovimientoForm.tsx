@@ -17,6 +17,7 @@ interface Props {
   onOpenChange: (b: boolean) => void;
   container?: Container;
   availableContainers?: Container[];
+  initialTipo?: Tipo;
 }
 
 type Tipo = "entrada_proveedor" | "salida_produccion" | "traslado_interno";
@@ -37,10 +38,16 @@ function toIsoDate(dateValue: string) {
   return `${dateValue}T00:00:00`;
 }
 
-export const MovimientoForm = ({ open, onOpenChange, container, availableContainers = allContainers }: Props) => {
+export const MovimientoForm = ({
+  open,
+  onOpenChange,
+  container,
+  availableContainers = allContainers,
+  initialTipo = "entrada_proveedor",
+}: Props) => {
   const { usuario, accessToken } = useRole();
   const queryClient = useQueryClient();
-  const [tipo, setTipo] = useState<Tipo>("entrada_proveedor");
+  const [tipo, setTipo] = useState<Tipo>(initialTipo);
   const [productoId, setProductoId] = useState("");
   const [containerOrigenId, setContainerOrigenId] = useState(container?.id ?? availableContainers[0]?.id ?? "");
   const [containerDestinoId, setContainerDestinoId] = useState("");
@@ -69,7 +76,7 @@ export const MovimientoForm = ({ open, onOpenChange, container, availableContain
 
   const selectedProduct = productsQuery.data?.find((item) => item.id === productoId) ?? null;
   const showSernapesca = tipo === "entrada_proveedor";
-  const showSAG = selectedProduct?.categoria === "veterinario";
+  const showSAG = tipo === "entrada_proveedor" && selectedProduct?.categoria === "veterinario";
   const isOperario = usuario.rol === "operario";
 
   const destinationOptions = useMemo(
@@ -81,7 +88,7 @@ export const MovimientoForm = ({ open, onOpenChange, container, availableContain
     if (!open) return;
 
     const defaultOriginId = container?.id ?? availableContainers[0]?.id ?? "";
-    setTipo("entrada_proveedor");
+    setTipo(initialTipo);
     setProductoId("");
     setContainerOrigenId(defaultOriginId);
     setContainerDestinoId("");
@@ -97,7 +104,7 @@ export const MovimientoForm = ({ open, onOpenChange, container, availableContain
     setNumAutorizacionSag("");
     setObservaciones("");
     setError(null);
-  }, [availableContainers, container, open]);
+  }, [availableContainers, container, initialTipo, open]);
 
   const createMutation = useMutation({
     mutationFn: ({ accessToken: token, payload }: { accessToken: string; payload: Parameters<typeof createMovimiento>[1] }) =>

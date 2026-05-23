@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
-import { galpones as fallbackGalpones, sedes as fallbackSedes, containers as fallbackContainers, estadoColor } from "@/data/mock";
+import { estadoColor } from "@/data/mock";
 import { GalponScene } from "@/components/three/GalponScene";
 import { StatusLegend } from "@/components/StatusLegend";
 import { Button } from "@/components/ui/button";
@@ -9,24 +9,13 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { Package, ClipboardEdit, X, Grid3X3, Archive, type LucideIcon } from "lucide-react";
 import { MovimientoForm } from "@/components/MovimientoForm";
 import { useInventorySnapshot } from "@/hooks/use-inventory-snapshot";
-import type { InventoryContainerView } from "@/lib/inventory";
-
-const fallbackContainerViews: InventoryContainerView[] = fallbackContainers.map((container, index) => ({
-  ...container,
-  capacidadMax: 2000,
-  ocupacionActual: Math.round(container.ocupacion * 20),
-  unidadMedida: "kg",
-  tipoProductoPermitido: container.producto?.toLowerCase() ?? "general",
-  posicionFila: Math.floor(index / 4) + 1,
-  posicionCol: (index % 4) + 1,
-}));
 
 export default function GalponDetalle() {
   const { id } = useParams();
   const inventoryQuery = useInventorySnapshot();
-  const galpones = inventoryQuery.data?.galpones ?? fallbackGalpones;
-  const sedes = inventoryQuery.data?.sedes ?? fallbackSedes;
-  const containers = inventoryQuery.data?.containers ?? fallbackContainerViews;
+  const galpones = inventoryQuery.data?.galpones ?? [];
+  const sedes = inventoryQuery.data?.sedes ?? [];
+  const containers = inventoryQuery.data?.containers ?? [];
   const galpon = galpones.find((item) => item.id === id);
   const sede = sedes.find((item) => item.id === galpon?.sedeId);
   const display = useMemo(
@@ -36,6 +25,14 @@ export default function GalponDetalle() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [openMov, setOpenMov] = useState(false);
   const selected = display.find((item) => item.id === selectedId) ?? null;
+
+  if (inventoryQuery.isLoading) {
+    return <div className="p-6 text-sm text-muted-foreground">Cargando galpon...</div>;
+  }
+
+  if (inventoryQuery.isError) {
+    return <div className="p-6 text-sm text-muted-foreground">No se pudo cargar el galpon desde la API.</div>;
+  }
 
   if (!galpon || !sede) {
     return <div className="p-6">Galpon no encontrado.</div>;
@@ -64,11 +61,17 @@ export default function GalponDetalle() {
                 {display.length} containers · ocupacion promedio {ocupacionPromedio}%
               </p>
             </div>
-            <Button onClick={() => setOpenMov(true)} className="bg-primary hover:bg-secondary">
+            <Button onClick={() => setOpenMov(true)} className="bg-primary hover:bg-secondary" disabled={display.length === 0}>
               <ClipboardEdit className="h-4 w-4 mr-2" /> Registrar movimiento
             </Button>
           </div>
-          <GalponScene containers={display.length > 0 ? display : fallbackContainerViews.slice(0, 12)} selectedId={selectedId} onSelect={(container) => setSelectedId(container.id)} />
+          {display.length > 0 ? (
+            <GalponScene containers={display} selectedId={selectedId} onSelect={(container) => setSelectedId(container.id)} />
+          ) : (
+            <div className="rounded-lg border border-dashed border-border p-6 text-sm text-muted-foreground">
+              Este galpon no tiene containers disponibles para visualizar.
+            </div>
+          )}
           <StatusLegend />
         </div>
 
@@ -114,7 +117,7 @@ export default function GalponDetalle() {
               </div>
 
               <div className="space-y-2 pt-2">
-                <Button className="w-full bg-primary hover:bg-secondary" onClick={() => setOpenMov(true)}>
+                <Button className="w-full bg-primary hover:bg-secondary" onClick={() => setOpenMov(true)} disabled={display.length === 0}>
                   Registrar movimiento
                 </Button>
                 <Button variant="outline" className="w-full" disabled>

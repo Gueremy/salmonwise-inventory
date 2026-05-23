@@ -1,6 +1,6 @@
 import { useParams, useNavigate } from "react-router-dom";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
-import { sedes as fallbackSedes, galpones as fallbackGalpones, ocupacionToEstado, estadoColor } from "@/data/mock";
+import { ocupacionToEstado, estadoColor } from "@/data/mock";
 import { SedeScene } from "@/components/three/SedeScene";
 import { StatusLegend } from "@/components/StatusLegend";
 import { Bell, Box, Ship, Factory, Warehouse } from "lucide-react";
@@ -12,10 +12,18 @@ export default function SedeDetalle() {
   const { id } = useParams();
   const navigate = useNavigate();
   const inventoryQuery = useInventorySnapshot();
-  const sedes = inventoryQuery.data?.sedes ?? fallbackSedes;
-  const galpones = inventoryQuery.data?.galpones ?? fallbackGalpones;
+  const sedes = inventoryQuery.data?.sedes ?? [];
+  const galpones = inventoryQuery.data?.galpones ?? [];
   const sede = sedes.find((item) => item.id === id);
   const sedeGalpones = galpones.filter((item) => item.sedeId === id);
+
+  if (inventoryQuery.isLoading) {
+    return <div className="p-6 text-sm text-muted-foreground">Cargando sede...</div>;
+  }
+
+  if (inventoryQuery.isError) {
+    return <div className="p-6 text-sm text-muted-foreground">No se pudo cargar la sede desde la API.</div>;
+  }
 
   if (!sede) {
     return (
@@ -99,7 +107,13 @@ export default function SedeDetalle() {
               Click en un galpon para entrar a su vista 3D.
             </p>
           </div>
-          <SedeScene galpones={sedeGalpones} tipo={sede.tipo} sedeNombre={sede.nombre} />
+          {sedeGalpones.length > 0 ? (
+            <SedeScene galpones={sedeGalpones} tipo={sede.tipo} sedeNombre={sede.nombre} />
+          ) : (
+            <div className="rounded-lg border border-dashed border-border p-6 text-sm text-muted-foreground">
+              Esta sede no tiene galpones disponibles para visualizar.
+            </div>
+          )}
           <StatusLegend />
         </div>
       </div>
