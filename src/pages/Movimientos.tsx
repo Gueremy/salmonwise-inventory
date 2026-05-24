@@ -7,6 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { MovStatusBadge } from "@/components/StatusBadge";
 import { useRole } from "@/context/RoleContext";
 import { approveMovimiento, fetchMovimientos, rejectMovimiento } from "@/lib/api";
+import { toast } from "sonner";
 
 const prettyType: Record<string, string> = {
   entrada_proveedor: "Entrada proveedor",
@@ -57,21 +58,35 @@ export default function Movimientos() {
   const approveMutation = useMutation({
     mutationFn: ({ token, id }: { token: string; id: string }) => approveMovimiento(token, id),
     onSuccess: () => {
+      toast.success("Movimiento aprobado");
       queryClient.invalidateQueries({ queryKey: ["movimientos"] });
       queryClient.invalidateQueries({ queryKey: ["inventory-snapshot"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard-kpis"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard-galpones"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard-pending-movements"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard-alertas"] });
       setSelectedId(null);
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : "No se pudo aprobar el movimiento");
     },
   });
 
   const rejectMutation = useMutation({
     mutationFn: ({ token, id, motivo }: { token: string; id: string; motivo: string }) => rejectMovimiento(token, id, motivo),
     onSuccess: () => {
+      toast.success("Movimiento rechazado");
       queryClient.invalidateQueries({ queryKey: ["movimientos"] });
       queryClient.invalidateQueries({ queryKey: ["inventory-snapshot"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard-kpis"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard-galpones"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard-pending-movements"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard-alertas"] });
       setMotivoRechazo("");
       setSelectedId(null);
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : "No se pudo rechazar el movimiento");
     },
   });
 

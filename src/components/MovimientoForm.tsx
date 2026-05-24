@@ -115,6 +115,8 @@ export const MovimientoForm = ({
       queryClient.invalidateQueries({ queryKey: ["inventory-snapshot"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard-kpis"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard-galpones"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard-pending-movements"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard-alertas"] });
       queryClient.invalidateQueries({ queryKey: ["movimientos"] });
       onOpenChange(false);
     },
