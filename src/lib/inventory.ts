@@ -1,7 +1,34 @@
-import type { Container, EstadoContainer, Galpon, Sede, TipoSede } from "@/data/mock";
 import type { ApiAlerta, ApiContainer, ApiGalpon, ApiSede } from "@/lib/api";
 
-export interface InventoryContainerView extends Container {
+export type EstadoContainer = "disponible" | "medio" | "critico" | "mantenimiento" | "cuarentena";
+export type TipoSede = "embarcacion" | "planta" | "bodega";
+
+export interface InventorySede {
+  id: string;
+  nombre: string;
+  tipo: TipoSede;
+  ocupacion: number;
+  alertas: number;
+}
+
+export interface InventoryGalpon {
+  id: string;
+  codigo: string;
+  nombre: string;
+  containers: number;
+  ocupacion_prom: number;
+  sedeId: string;
+}
+
+export interface InventoryContainerView {
+  id: string;
+  codigo: string;
+  ocupacion: number;
+  estado: EstadoContainer;
+  producto: string | null;
+  lote: string | null;
+  vencimiento: string | null;
+  galponId: string;
   capacidadMax: number;
   ocupacionActual: number;
   unidadMedida: string;
@@ -11,10 +38,32 @@ export interface InventoryContainerView extends Container {
 }
 
 export interface InventorySnapshot {
-  sedes: Sede[];
-  galpones: Galpon[];
+  sedes: InventorySede[];
+  galpones: InventoryGalpon[];
   containers: InventoryContainerView[];
 }
+
+export const estadoColor: Record<EstadoContainer, string> = {
+  disponible: "#22C55E",
+  medio: "#EAB308",
+  critico: "#EF4444",
+  mantenimiento: "#9CA3AF",
+  cuarentena: "#8B5CF6",
+};
+
+export const estadoLabel: Record<EstadoContainer, string> = {
+  disponible: "Disponible",
+  medio: "Medio",
+  critico: "Critico",
+  mantenimiento: "Mantenimiento",
+  cuarentena: "Cuarentena",
+};
+
+export const ocupacionToEstado = (ocupacion: number): EstadoContainer => {
+  if (ocupacion < 41) return "disponible";
+  if (ocupacion < 80) return "medio";
+  return "critico";
+};
 
 const tipoSedeMap: Record<ApiSede["tipo"], TipoSede> = {
   ponton: "embarcacion",
@@ -124,7 +173,7 @@ export function buildInventorySnapshot(input: {
     })
     .sort((left, right) => left.codigo.localeCompare(right.codigo));
 
-  const galponesBySede = new Map<string, Galpon[]>();
+  const galponesBySede = new Map<string, InventoryGalpon[]>();
 
   for (const galpon of galpones) {
     const items = galponesBySede.get(galpon.sedeId) ?? [];

@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
-import { estadoColor } from "@/data/mock";
+import { estadoColor } from "@/lib/inventory";
 import { GalponScene } from "@/components/three/GalponScene";
 import { StatusLegend } from "@/components/StatusLegend";
 import { Button } from "@/components/ui/button";

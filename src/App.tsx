@@ -16,6 +16,8 @@ import Alertas from "./pages/Alertas";
 import Operario from "./pages/Operario";
 import Gerencia from "./pages/Gerencia";
 import Inventario from "./pages/Inventario";
+import Usuarios from "./pages/Usuarios";
+import Reportes from "./pages/Reportes";
 import Stub from "./pages/Stub";
 import NotFound from "./pages/NotFound";
 
@@ -51,8 +53,8 @@ const App = () => (
                 <Route path="/movimientos" element={<Movimientos />} />
                 <Route path="/alertas" element={<Alertas />} />
                 <Route path="/gerencia" element={<Gerencia />} />
-                <Route path="/reportes" element={<Stub title="Reportes" />} />
-                <Route path="/usuarios" element={<Stub title="Gestion de usuarios" />} />
+                <Route path="/reportes" element={<Reportes />} />
+                <Route path="/usuarios" element={<Usuarios />} />
                 <Route path="/config" element={<Stub title="Configuracion" />} />
               </Route>
             </Route>

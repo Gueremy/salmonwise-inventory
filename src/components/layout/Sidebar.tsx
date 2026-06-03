@@ -7,7 +7,7 @@ const items = [
   { to: "/sedes", label: "Vista Global", icon: Map },
   { to: "/inventario", label: "Inventario 3D", icon: Boxes },
   { to: "/movimientos", label: "Movimientos", icon: ClipboardList },
-  { to: "/alertas", label: "Alertas", icon: Bell, badge: 3 },
+  { to: "/alertas", label: "Alertas", icon: Bell },
   { to: "/reportes", label: "Reportes", icon: BarChart3 },
   { to: "/usuarios", label: "Usuarios", icon: Users, roles: ["admin_sede", "super_admin"] },
   { to: "/config", label: "Configuración", icon: Settings },

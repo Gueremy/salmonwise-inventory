@@ -12,9 +12,20 @@ export interface ApiUser {
   codigo_empleado: string;
   rol: "jefe_bodega" | "admin_sede" | "operario" | "gerencia" | "super_admin";
   id_sede: string | null;
+  turno: "A" | "B" | null;
   activo: boolean;
   fecha_creacion: string;
   ultimo_acceso: string | null;
+}
+
+export interface UpdateUsuarioPayload {
+  nombre?: string;
+  email?: string;
+  codigo_empleado?: string;
+  rol?: ApiUser["rol"];
+  id_sede?: string | null;
+  turno?: "A" | "B" | null;
+  activo?: boolean;
 }
 
 export interface DashboardKpis {
@@ -166,6 +177,12 @@ export interface MovimientoPayload {
   observaciones?: string;
 }
 
+export interface ReportDownloadResult {
+  blob: Blob;
+  filename: string;
+  sha256: string;
+}
+
 async function parseJson<T>(response: Response): Promise<T> {
   if (!response.ok) {
     const body = await response.json().catch(() => null) as { detail?: string } | null;
@@ -209,6 +226,42 @@ export async function fetchMe(accessToken: string) {
   });
 
   return parseJson<ApiUser>(response);
+}
+
+export async function fetchUsuarios(accessToken: string) {
+  const response = await fetch(`${API_BASE_URL}/usuarios/`, {
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+  });
+
+  return parseJson<PaginatedResponse<ApiUser>>(response);
+}
+
+export async function updateUsuario(accessToken: string, id: string, payload: UpdateUsuarioPayload) {
+  const response = await fetch(`${API_BASE_URL}/usuarios/${id}`, {
+    method: "PATCH",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+
+  return parseJson<ApiUser>(response);
+}
+
+export async function asignarGalponesUsuario(accessToken: string, id: string, galponesIds: string[]) {
+  const response = await fetch(`${API_BASE_URL}/usuarios/${id}/asignar-galpones`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(galponesIds),
+  });
+
+  return parseJson<{ mensaje: string }>(response);
 }
 
 export async function fetchDashboardKpis(accessToken: string) {
@@ -269,6 +322,45 @@ export async function fetchAlertasActivas(accessToken: string) {
   });
 
   return parseJson<ApiAlerta[]>(response);
+}
+
+function filenameFromDisposition(disposition: string | null, fallback: string) {
+  const match = disposition?.match(/filename="?([^";]+)"?/i);
+  return match?.[1] ?? fallback;
+}
+
+async function sha256FromArrayBuffer(buffer: ArrayBuffer) {
+  const digest = await crypto.subtle.digest("SHA-256", buffer);
+  return Array.from(new Uint8Array(digest))
+    .map((byte) => byte.toString(16).padStart(2, "0"))
+    .join("");
+}
+
+export async function downloadReporte(
+  accessToken: string,
+  type: "pdf" | "excel" | "sernapesca",
+  query = "",
+): Promise<ReportDownloadResult> {
+  const endpoint = type === "pdf" ? "/reportes/movimientos/pdf" : type === "excel" ? "/reportes/movimientos/excel" : "/reportes/sernapesca";
+  const suffix = query ? `?${query}` : "";
+  const response = await fetch(`${API_BASE_URL}${endpoint}${suffix}`, {
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+  });
+
+  if (!response.ok) {
+    const body = await response.json().catch(() => null) as { detail?: string } | null;
+    throw new Error(body?.detail ?? "No se pudo descargar el reporte");
+  }
+
+  const buffer = await response.arrayBuffer();
+  const extension = type === "pdf" ? "pdf" : "xlsx";
+  return {
+    blob: new Blob([buffer], { type: response.headers.get("content-type") ?? "application/octet-stream" }),
+    filename: filenameFromDisposition(response.headers.get("content-disposition"), `reporte.${extension}`),
+    sha256: await sha256FromArrayBuffer(buffer),
+  };
 }
 
 export async function fetchProductos(accessToken: string) {

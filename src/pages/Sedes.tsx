@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { Ship, Factory, Warehouse, Bell, ArrowRight } from "lucide-react";
-import { ocupacionToEstado, estadoColor } from "@/data/mock";
+import { ocupacionToEstado, estadoColor } from "@/lib/inventory";
 import { useInventorySnapshot } from "@/hooks/use-inventory-snapshot";
 
 const tipoIcon = { embarcacion: Ship, planta: Factory, bodega: Warehouse };

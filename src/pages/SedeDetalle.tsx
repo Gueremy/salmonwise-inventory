@@ -1,6 +1,6 @@
 import { useParams, useNavigate } from "react-router-dom";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
-import { ocupacionToEstado, estadoColor } from "@/data/mock";
+import { ocupacionToEstado, estadoColor } from "@/lib/inventory";
 import { SedeScene } from "@/components/three/SedeScene";
 import { StatusLegend } from "@/components/StatusLegend";
 import { Bell, Box, Ship, Factory, Warehouse } from "lucide-react";

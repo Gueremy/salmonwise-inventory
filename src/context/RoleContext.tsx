@@ -1,5 +1,28 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
-import { usuarios, Usuario } from "@/data/mock";
+
+export type Rol = "jefe_bodega" | "admin_sede" | "operario" | "gerencia" | "super_admin";
+
+export interface Usuario {
+  id: string;
+  nombre: string;
+  rol: Rol;
+  sede: string;
+}
+
+export const rolLabel: Record<Rol, string> = {
+  jefe_bodega: "Jefe de Bodega",
+  admin_sede: "Admin Sede",
+  operario: "Operario",
+  gerencia: "Gerencia",
+  super_admin: "Super Admin",
+};
+
+const DEFAULT_USER: Usuario = {
+  id: "",
+  nombre: "Usuario",
+  rol: "operario",
+  sede: "Sin sede asignada",
+};
 
 interface RoleContextType {
   usuario: Usuario;
@@ -20,7 +43,7 @@ const STORAGE_USER_KEY = "axious.user";
 const STORAGE_TOKEN_KEY = "axious.accessToken";
 
 export const RoleProvider = ({ children }: { children: ReactNode }) => {
-  const [usuario, setUsuario] = useState<Usuario>(usuarios[0]);
+  const [usuario, setUsuario] = useState<Usuario>(DEFAULT_USER);
   const [authenticated, setAuthenticated] = useState(false);
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const [online, setOnline] = useState(true);
@@ -53,7 +76,7 @@ export const RoleProvider = ({ children }: { children: ReactNode }) => {
   const logout = () => {
     setAuthenticated(false);
     setAccessToken(null);
-    setUsuario(usuarios[0]);
+    setUsuario(DEFAULT_USER);
   };
 
   return (

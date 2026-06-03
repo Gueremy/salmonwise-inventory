@@ -1,6 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { useRole } from "@/context/RoleContext";
-import { rolLabel } from "@/data/mock";
+import { rolLabel, useRole } from "@/context/RoleContext";
 import { Wifi, WifiOff, ChevronDown, LogOut } from "lucide-react";
 import {
   DropdownMenu,

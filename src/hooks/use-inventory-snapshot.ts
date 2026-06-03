@@ -21,7 +21,7 @@ export function useInventorySnapshot() {
         fetchSedes(accessToken!),
         fetchGalpones(accessToken!),
         fetchContainers(accessToken!),
-        fetchAlertasActivas(accessToken!).catch(() => []),
+        fetchAlertasActivas(accessToken!),
       ]);
 
       return buildInventorySnapshot({

@@ -1,55 +1,96 @@
-import { AlertTriangle, AlertCircle, Info, Check, ExternalLink } from "lucide-react";
+import { useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { AlertTriangle, AlertCircle, Info, ExternalLink } from "lucide-react";
+import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import { useRole } from "@/context/RoleContext";
+import { ApiAlerta, fetchAlertasActivas } from "@/lib/api";
 
-const grupos = [
-  {
-    titulo: "Críticas", color: "destructive", bg: "bg-destructive/5 border-destructive/30", icon: AlertCircle,
-    items: [
-      { txt: "Container G2-C08 al 95% de capacidad — Galpón Químicos", time: "hace 1h" },
-      { txt: "Producto LOT-2026-03-012 vence en 3 días — G1-C15", time: "hace 2h" },
-    ],
-  },
-  {
-    titulo: "Avisos", color: "status-medio", bg: "bg-status-medio/5 border-status-medio/30", icon: AlertTriangle,
-    items: [
-      { txt: "Container G3-C02 en cuarentena sin revisión > 48h", time: "hace 5h" },
-      { txt: "Stock mínimo alcanzado: Antibiótico XYZ", time: "hace 7h" },
-    ],
-  },
-  {
-    titulo: "Informativas", color: "secondary", bg: "bg-secondary/5 border-secondary/30", icon: Info,
-    items: [
-      { txt: "Sincronización offline completada: 12 movimientos", time: "hace 8h" },
-    ],
-  },
-];
+const severityConfig = {
+  critica: { titulo: "Criticas", bg: "bg-destructive/5 border-destructive/30", text: "text-destructive", icon: AlertCircle },
+  media: { titulo: "Avisos", bg: "bg-status-medio/5 border-status-medio/30", text: "text-status-medio", icon: AlertTriangle },
+  baja: { titulo: "Informativas", bg: "bg-secondary/5 border-secondary/30", text: "text-secondary", icon: Info },
+} as const;
+
+const fallbackConfig = { titulo: "Otras", bg: "bg-muted/40 border-border", text: "text-muted-foreground", icon: Info };
+
+function formatDate(value: string | null) {
+  if (!value) return "Sin fecha registrada";
+  return new Intl.DateTimeFormat("es-CL", { dateStyle: "medium", timeStyle: "short" }).format(new Date(value));
+}
+
+function groupAlertas(alertas: ApiAlerta[]) {
+  return alertas.reduce<Record<string, ApiAlerta[]>>((groups, alerta) => {
+    const key = alerta.severidad.toLowerCase();
+    groups[key] = [...(groups[key] ?? []), alerta];
+    return groups;
+  }, {});
+}
 
 export default function Alertas() {
+  const { accessToken } = useRole();
+  const alertasQuery = useQuery({
+    queryKey: ["alertas-activas", accessToken],
+    enabled: Boolean(accessToken),
+    retry: false,
+    queryFn: () => fetchAlertasActivas(accessToken!),
+  });
+  const grupos = useMemo(() => groupAlertas(alertasQuery.data ?? []), [alertasQuery.data]);
+  const orderedKeys = ["critica", "media", "baja", ...Object.keys(grupos).filter((key) => !["critica", "media", "baja"].includes(key))];
+
   return (
     <div className="p-6 space-y-5 animate-fade-in">
-      {grupos.map((g) => (
-        <section key={g.titulo}>
-          <div className={`flex items-center gap-2 mb-2 text-${g.color}`}>
-            <g.icon className="h-4 w-4" />
-            <h3 className="font-semibold text-sm uppercase tracking-wide">{g.titulo}</h3>
-            <span className="text-xs text-muted-foreground">({g.items.length})</span>
-          </div>
-          <div className="space-y-2">
-            {g.items.map((a, i) => (
-              <div key={i} className={`rounded-lg border p-4 flex items-center justify-between gap-4 ${g.bg}`}>
-                <div className="text-sm">
-                  <div className="font-medium">{a.txt}</div>
-                  <div className="text-xs text-muted-foreground mt-0.5">{a.time}</div>
+      <div>
+        <h2 className="text-xl font-bold">Alertas activas</h2>
+        <p className="text-sm text-muted-foreground">Datos live desde GET /alertas/activas.</p>
+      </div>
+
+      {alertasQuery.isLoading && <div className="text-sm text-muted-foreground">Cargando alertas...</div>}
+      {alertasQuery.isError && (
+        <div className="rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
+          No se pudieron cargar las alertas activas desde la API.
+        </div>
+      )}
+
+      {alertasQuery.isSuccess && alertasQuery.data.length === 0 && (
+        <div className="rounded-lg border border-border bg-card p-6 text-sm text-muted-foreground">
+          No hay alertas activas para tu sede.
+        </div>
+      )}
+
+      {orderedKeys.map((key) => {
+        const items = grupos[key] ?? [];
+        if (items.length === 0) return null;
+        const config = severityConfig[key as keyof typeof severityConfig] ?? fallbackConfig;
+        const Icon = config.icon;
+
+        return (
+          <section key={key}>
+            <div className={`flex items-center gap-2 mb-2 ${config.text}`}>
+              <Icon className="h-4 w-4" />
+              <h3 className="font-semibold text-sm uppercase tracking-wide">{config.titulo}</h3>
+              <span className="text-xs text-muted-foreground">({items.length})</span>
+            </div>
+            <div className="space-y-2">
+              {items.map((alerta) => (
+                <div key={alerta.id} className={`rounded-lg border p-4 flex items-center justify-between gap-4 ${config.bg}`}>
+                  <div className="text-sm">
+                    <div className="font-medium">{alerta.descripcion}</div>
+                    <div className="text-xs text-muted-foreground mt-0.5">
+                      {alerta.tipo} · container {alerta.id_container} · {formatDate(alerta.fecha_generacion)}
+                    </div>
+                  </div>
+                  <Button asChild variant="outline" size="sm" className="shrink-0">
+                    <Link to={`/inventario`}>
+                      <ExternalLink className="h-3.5 w-3.5 mr-1" /> Ver inventario
+                    </Link>
+                  </Button>
                 </div>
-                <div className="flex gap-2 shrink-0">
-                  <Button variant="outline" size="sm"><Check className="h-3.5 w-3.5 mr-1" />Revisada</Button>
-                  <Button variant="outline" size="sm"><ExternalLink className="h-3.5 w-3.5 mr-1" />Ver container</Button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
-      ))}
+              ))}
+            </div>
+          </section>
+        );
+      })}
     </div>
   );
 }

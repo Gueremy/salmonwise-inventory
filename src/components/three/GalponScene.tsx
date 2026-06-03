@@ -2,15 +2,15 @@ import { useRef, useState, Suspense } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
 import { OrbitControls, Html, Edges } from "@react-three/drei";
 import * as THREE from "three";
-import { Container, estadoColor } from "@/data/mock";
+import { InventoryContainerView, estadoColor } from "@/lib/inventory";
 
 interface Props {
-  containers: Container[];
+  containers: InventoryContainerView[];
   selectedId: string | null;
-  onSelect: (c: Container) => void;
+  onSelect: (c: InventoryContainerView) => void;
 }
 
-const ContainerBox = ({ c, position, selected, onSelect }: { c: Container; position: [number, number, number]; selected: boolean; onSelect: () => void }) => {
+const ContainerBox = ({ c, position, selected, onSelect }: { c: InventoryContainerView; position: [number, number, number]; selected: boolean; onSelect: () => void }) => {
   const ref = useRef<THREE.Mesh>(null);
   const [hovered, setHovered] = useState(false);
   const color = estadoColor[c.estado];

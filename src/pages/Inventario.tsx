@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { Boxes } from "lucide-react";
-import { ocupacionToEstado, estadoColor } from "@/data/mock";
+import { ocupacionToEstado, estadoColor } from "@/lib/inventory";
 import { useInventorySnapshot } from "@/hooks/use-inventory-snapshot";
 
 export default function Inventario() {
