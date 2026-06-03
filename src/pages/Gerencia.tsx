@@ -1,7 +1,8 @@
 import { Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis, CartesianGrid, Radar, RadarChart, PolarAngleAxis, PolarGrid, PolarRadiusAxis, Legend } from "recharts";
-import { sedes, ocupacionToEstado, estadoColor } from "@/data/mock";
+import { ocupacionToEstado, estadoColor } from "@/lib/inventory";
 import { Bell, FileText, FileSpreadsheet, Ship, Factory, Warehouse } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useInventorySnapshot } from "@/hooks/use-inventory-snapshot";
 
 const tipoIcon = { embarcacion: Ship, planta: Factory, bodega: Warehouse };
 
@@ -29,6 +30,9 @@ const top5 = [
 ];
 
 export default function Gerencia() {
+  const inventoryQuery = useInventorySnapshot();
+  const sedes = inventoryQuery.data?.sedes ?? [];
+
   return (
     <div className="p-6 space-y-6 animate-fade-in">
       <div className="flex items-center justify-between">

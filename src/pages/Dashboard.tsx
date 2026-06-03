@@ -17,7 +17,7 @@ import {
   fetchMovimientos,
   rejectMovimiento,
 } from "@/lib/api";
-import { estadoColor } from "@/data/mock";
+import { estadoColor } from "@/lib/inventory";
 
 const KpiCard = ({ label, value, sub, icon: Icon, accent }: any) => (
   <div className="kpi-card">

@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ArrowDownToLine, ArrowUpFromLine, RefreshCw, ShieldCheck, Stethoscope } from "lucide-react";
-import { Container, containers as allContainers } from "@/data/mock";
+import type { InventoryContainerView } from "@/lib/inventory";
 import { useRole } from "@/context/RoleContext";
 import { createMovimiento, fetchProductos } from "@/lib/api";
 import { toast } from "sonner";
@@ -15,8 +15,8 @@ import { toast } from "sonner";
 interface Props {
   open: boolean;
   onOpenChange: (b: boolean) => void;
-  container?: Container;
-  availableContainers?: Container[];
+  container?: InventoryContainerView;
+  availableContainers?: InventoryContainerView[];
   initialTipo?: Tipo;
 }
 
@@ -42,7 +42,7 @@ export const MovimientoForm = ({
   open,
   onOpenChange,
   container,
-  availableContainers = allContainers,
+  availableContainers = [],
   initialTipo = "entrada_proveedor",
 }: Props) => {
   const { usuario, accessToken } = useRole();
