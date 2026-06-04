@@ -25,15 +25,19 @@ export default function Login() {
   }, [authenticated, navigate]);
 
   useEffect(() => {
-    fetchHealth()
-      .then(() => {
-        setBackendStatus("online");
-        setOnline(true);
-      })
-      .catch(() => {
-        setBackendStatus("offline");
-        setOnline(false);
-      });
+    let cancelled = false;
+    const check = (retries = 2) =>
+      fetchHealth()
+        .then(() => {
+          if (!cancelled) { setBackendStatus("online"); setOnline(true); }
+        })
+        .catch(() => {
+          if (cancelled) return;
+          if (retries > 0) setTimeout(() => check(retries - 1), 3000);
+          else { setBackendStatus("offline"); setOnline(false); }
+        });
+    check();
+    return () => { cancelled = true; };
   }, [setOnline]);
 
   const handleLogin = async () => {
@@ -138,7 +142,7 @@ export default function Login() {
           </Button>
 
           <p className="text-xs text-muted-foreground text-center">
-            Frontend Vite conectado a FastAPI local en http://localhost:8000.
+            Frontend conectado a axious-backend.onrender.com
           </p>
         </div>
       </div>
