@@ -11,7 +11,7 @@ const sedeLabel = (idSede: string | null) => idSede ?? "Global";
 
 export default function Login() {
   const navigate = useNavigate();
-  const { setUsuario, setAuthenticated, setAccessToken, authenticated, setOnline } = useRole();
+  const { setUsuario, setAuthenticated, setAccessToken, setRefreshToken, authenticated, setOnline } = useRole();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -50,12 +50,18 @@ export default function Login() {
       const usuario: Usuario = {
         id: me.id,
         nombre: me.nombre,
+        email: me.email,
+        codigo_empleado: me.codigo_empleado,
         rol: me.rol,
         sede: sedeLabel(me.id_sede),
+        id_sede: me.id_sede,
+        turno: me.turno,
+        activo: me.activo,
       };
 
       setUsuario(usuario);
       setAccessToken(tokens.access_token);
+      setRefreshToken(tokens.refresh_token);
       setAuthenticated(true);
       setOnline(true);
       navigate(usuario.rol === "operario" ? "/operario" : usuario.rol === "gerencia" ? "/gerencia" : "/dashboard");
@@ -63,6 +69,7 @@ export default function Login() {
       setError(err instanceof Error ? err.message : "No se pudo iniciar sesion");
       setAuthenticated(false);
       setAccessToken(null);
+      setRefreshToken(null);
     } finally {
       setLoading(false);
     }
@@ -112,7 +119,7 @@ export default function Login() {
 
           <div>
             <h1 className="text-2xl font-bold tracking-tight">Ingresar</h1>
-            <p className="text-sm text-muted-foreground mt-1">Accede a tu panel conectado al backend local.</p>
+            <p className="text-sm text-muted-foreground mt-1">Accede a tu panel de inventario.</p>
           </div>
 
           <div className="space-y-4">
@@ -141,9 +148,7 @@ export default function Login() {
             {loading ? "Ingresando..." : "Ingresar"}
           </Button>
 
-          <p className="text-xs text-muted-foreground text-center">
-            Frontend conectado a axious-backend.onrender.com
-          </p>
+          <p className="text-xs text-muted-foreground text-center">Conexion segura con el servicio de inventario</p>
         </div>
       </div>
     </div>

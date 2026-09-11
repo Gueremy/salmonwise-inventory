@@ -9,7 +9,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ArrowDownToLine, ArrowUpFromLine, RefreshCw, ShieldCheck, Stethoscope } from "lucide-react";
 import type { InventoryContainerView } from "@/lib/inventory";
 import { useRole } from "@/context/RoleContext";
-import { createMovimiento, fetchProductos } from "@/lib/api";
+import { createMovimiento, fetchProductos, isNetworkError, type MovimientoPayload } from "@/lib/api";
+import { queueMovimiento } from "@/lib/db";
 import { toast } from "sonner";
 
 interface Props {
@@ -45,7 +46,7 @@ export const MovimientoForm = ({
   availableContainers = [],
   initialTipo = "entrada_proveedor",
 }: Props) => {
-  const { usuario, accessToken } = useRole();
+  const { usuario, accessToken, setOnline } = useRole();
   const queryClient = useQueryClient();
   const [tipo, setTipo] = useState<Tipo>(initialTipo);
   const [productoId, setProductoId] = useState("");
@@ -107,10 +108,28 @@ export const MovimientoForm = ({
   }, [availableContainers, container, initialTipo, open]);
 
   const createMutation = useMutation({
-    mutationFn: ({ accessToken: token, payload }: { accessToken: string; payload: Parameters<typeof createMovimiento>[1] }) =>
-      createMovimiento(token, payload),
-    onSuccess: (data) => {
-      const statusMessage = data.estado === "aprobado" ? "Movimiento registrado y aprobado" : "Movimiento registrado y enviado a flujo";
+    mutationFn: async (payload: MovimientoPayload) => {
+      if (!navigator.onLine) {
+        await queueMovimiento(payload);
+        return { queued: true as const };
+      }
+      try {
+        const data = await createMovimiento(accessToken!, payload);
+        return { queued: false as const, data };
+      } catch (reason) {
+        if (!isNetworkError(reason)) throw reason;
+        setOnline(false);
+        await queueMovimiento(payload);
+        return { queued: true as const };
+      }
+    },
+    onSuccess: (result) => {
+      if (result.queued) {
+        toast.warning("Movimiento guardado en este dispositivo. Se sincronizara al recuperar la conexion.");
+        onOpenChange(false);
+        return;
+      }
+      const statusMessage = result.data.estado === "aprobado" ? "Movimiento registrado y aprobado" : "Movimiento registrado y enviado a flujo";
       toast.success(statusMessage);
       queryClient.invalidateQueries({ queryKey: ["inventory-snapshot"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard-kpis"] });
@@ -146,6 +165,11 @@ export const MovimientoForm = ({
       return false;
     }
 
+    if (!Number.isFinite(Number(cantidad)) || Number(cantidad) <= 0 || Number(cantidad) >= 999999) {
+      setError("La cantidad debe ser mayor a 0 y menor a 999999.");
+      return false;
+    }
+
     if (!fechaVencimiento) {
       setError("Ingresa la fecha de vencimiento.");
       return false;
@@ -176,24 +200,21 @@ export const MovimientoForm = ({
     if (!accessToken || !productoId || !containerOrigenId) return;
 
     createMutation.mutate({
-      accessToken,
-      payload: {
-        id_container: containerOrigenId,
-        id_producto: productoId,
-        tipo,
-        cantidad: Number(cantidad),
-        numero_lote: numeroLote.trim(),
-        fecha_vencimiento: toIsoDate(fechaVencimiento),
-        fecha_fabricacion: showSernapesca ? toIsoDate(fechaFabricacion) : undefined,
-        nombre_proveedor: showSernapesca ? nombreProveedor.trim() : undefined,
-        num_guia_despacho: showSernapesca ? numGuiaDespacho.trim() : undefined,
-        registro_sanitario: showSernapesca ? registroSanitario.trim() : undefined,
-        temperatura_almacen: showSernapesca ? Number(temperaturaAlmacen) : undefined,
-        num_receta_retenida: showSAG ? numRecetaRetenida.trim() : undefined,
-        num_autorizacion_sag: showSAG ? numAutorizacionSag.trim() : undefined,
-        id_container_destino: tipo === "traslado_interno" ? containerDestinoId : undefined,
-        observaciones: observaciones.trim() || undefined,
-      },
+      id_container: containerOrigenId,
+      id_producto: productoId,
+      tipo,
+      cantidad: Number(cantidad),
+      numero_lote: numeroLote.trim(),
+      fecha_vencimiento: toIsoDate(fechaVencimiento),
+      fecha_fabricacion: showSernapesca ? toIsoDate(fechaFabricacion) : undefined,
+      nombre_proveedor: showSernapesca ? nombreProveedor.trim() : undefined,
+      num_guia_despacho: showSernapesca ? numGuiaDespacho.trim() : undefined,
+      registro_sanitario: showSernapesca ? registroSanitario.trim() : undefined,
+      temperatura_almacen: showSernapesca ? Number(temperaturaAlmacen) : undefined,
+      num_receta_retenida: showSAG ? numRecetaRetenida.trim() : undefined,
+      num_autorizacion_sag: showSAG ? numAutorizacionSag.trim() : undefined,
+      id_container_destino: tipo === "traslado_interno" ? containerDestinoId : undefined,
+      observaciones: observaciones.trim() || undefined,
     });
   };
 

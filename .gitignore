@@ -33,6 +33,7 @@ wheels/
 .venv
 env/
 venv/
+node_modules/
 
 # IDEs
 .vscode/

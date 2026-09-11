@@ -1,21 +1,23 @@
 import { NavLink, useLocation } from "react-router-dom";
 import { Box, LayoutDashboard, Map, Boxes, ClipboardList, Bell, BarChart3, Users, Settings } from "lucide-react";
-import { useRole } from "@/context/RoleContext";
+import { type Rol, useRole } from "@/context/RoleContext";
 
-const items = [
-  { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { to: "/sedes", label: "Vista Global", icon: Map },
-  { to: "/inventario", label: "Inventario 3D", icon: Boxes },
-  { to: "/movimientos", label: "Movimientos", icon: ClipboardList },
-  { to: "/alertas", label: "Alertas", icon: Bell },
-  { to: "/reportes", label: "Reportes", icon: BarChart3 },
+const operationalRoles: Rol[] = ["super_admin", "admin_sede", "jefe_bodega"];
+const items: { to: string; label: string; icon: typeof Box; roles: Rol[] }[] = [
+  { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard, roles: operationalRoles },
+  { to: "/sedes", label: "Vista Global", icon: Map, roles: operationalRoles },
+  { to: "/inventario", label: "Inventario 3D", icon: Boxes, roles: operationalRoles },
+  { to: "/movimientos", label: "Movimientos", icon: ClipboardList, roles: operationalRoles },
+  { to: "/alertas", label: "Alertas", icon: Bell, roles: operationalRoles },
+  { to: "/gerencia", label: "Panel Gerencial", icon: BarChart3, roles: ["gerencia"] },
+  { to: "/reportes", label: "Reportes", icon: BarChart3, roles: ["super_admin", "admin_sede", "jefe_bodega", "gerencia"] },
   { to: "/usuarios", label: "Usuarios", icon: Users, roles: ["admin_sede", "super_admin"] },
-  { to: "/config", label: "Configuración", icon: Settings },
+  { to: "/config", label: "Configuracion", icon: Settings, roles: ["super_admin", "admin_sede", "jefe_bodega", "gerencia"] },
 ];
 
 export const Sidebar = () => {
   const { usuario } = useRole();
-  const visible = items.filter((i) => !i.roles || i.roles.includes(usuario.rol));
+  const visible = items.filter((item) => item.roles.includes(usuario.rol));
   return (
     <aside className="w-64 shrink-0 bg-sidebar text-sidebar-foreground flex flex-col h-screen sticky top-0">
       <div className="px-5 py-5 border-b border-sidebar-border">
@@ -46,11 +48,6 @@ export const Sidebar = () => {
               <item.icon className="h-4 w-4" />
               {item.label}
             </span>
-            {item.badge && (
-              <span className="text-[10px] bg-destructive text-destructive-foreground rounded-full px-1.5 py-0.5">
-                {item.badge}
-              </span>
-            )}
           </NavLink>
         ))}
       </nav>

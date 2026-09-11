@@ -1,4 +1,7 @@
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000";
+export const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000").replace(/\/$/, "");
+
+const STORAGE_TOKEN_KEY = "axious.accessToken";
+const STORAGE_REFRESH_KEY = "axious.refreshToken";
 
 export interface AuthTokens {
   access_token: string;
@@ -177,19 +180,109 @@ export interface MovimientoPayload {
   observaciones?: string;
 }
 
+export interface MovimientoOfflinePayload extends MovimientoPayload {
+  uuid_local: string;
+}
+
+export interface SyncResult {
+  uuid_local: string;
+  accion: "aplicar" | "rechazar";
+  motivo: string;
+  id_movimiento?: string;
+}
+
+export interface ContainerPublicInfo {
+  codigo: string;
+  estado: string;
+  ocupacion_actual: number;
+  capacidad_max: number;
+  unidad_medida: string;
+  tipo_permitido: string;
+}
+
 export interface ReportDownloadResult {
   blob: Blob;
   filename: string;
   sha256: string;
 }
 
+export class ApiError extends Error {
+  constructor(message: string, public readonly status: number) {
+    super(message);
+    this.name = "ApiError";
+  }
+}
+
+function detailMessage(body: unknown): string | null {
+  if (!body || typeof body !== "object" || !("detail" in body)) return null;
+  const detail = (body as { detail: unknown }).detail;
+  if (typeof detail === "string") return detail;
+  if (Array.isArray(detail)) {
+    return detail
+      .map((item) => typeof item === "object" && item && "msg" in item ? String(item.msg) : String(item))
+      .join(". ");
+  }
+  return null;
+}
+
 async function parseJson<T>(response: Response): Promise<T> {
   if (!response.ok) {
-    const body = await response.json().catch(() => null) as { detail?: string } | null;
-    throw new Error(body?.detail ?? "No se pudo completar la solicitud");
+    const body = await response.json().catch(() => null);
+    throw new ApiError(detailMessage(body) ?? "No se pudo completar la solicitud", response.status);
   }
 
   return response.json() as Promise<T>;
+}
+
+let refreshInFlight: Promise<AuthTokens> | null = null;
+
+export async function refreshSession(refreshToken?: string): Promise<AuthTokens> {
+  const activeRefreshToken = refreshToken ?? localStorage.getItem(STORAGE_REFRESH_KEY);
+  if (!activeRefreshToken) {
+    throw new ApiError("La sesion expiro", 401);
+  }
+
+  if (!refreshInFlight) {
+    refreshInFlight = fetch(`${API_BASE_URL}/auth/refresh`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ refresh_token: activeRefreshToken }),
+    })
+      .then(parseJson<AuthTokens>)
+      .then((tokens) => {
+        localStorage.setItem(STORAGE_TOKEN_KEY, tokens.access_token);
+        localStorage.setItem(STORAGE_REFRESH_KEY, tokens.refresh_token);
+        window.dispatchEvent(new CustomEvent("axious:tokens", { detail: tokens }));
+        return tokens;
+      })
+      .catch((error) => {
+        window.dispatchEvent(new Event("axious:session-expired"));
+        throw error;
+      })
+      .finally(() => {
+        refreshInFlight = null;
+      });
+  }
+
+  return refreshInFlight;
+}
+
+async function authenticatedFetch(path: string, accessToken: string, init: RequestInit = {}) {
+  const request = (token: string) => {
+    const headers = new Headers(init.headers);
+    headers.set("Authorization", `Bearer ${token}`);
+    return fetch(`${API_BASE_URL}${path}`, { ...init, headers });
+  };
+
+  const response = await request(accessToken);
+  if (response.status !== 401 || path === "/auth/refresh") return response;
+
+  const tokens = await refreshSession();
+  return request(tokens.access_token);
+}
+
+export function isNetworkError(error: unknown) {
+  return navigator.onLine === false || error instanceof TypeError;
 }
 
 export async function fetchHealth() {
@@ -219,7 +312,7 @@ export async function login(email: string, password: string) {
 }
 
 export async function fetchMe(accessToken: string) {
-  const response = await fetch(`${API_BASE_URL}/auth/me`, {
+  const response = await authenticatedFetch("/auth/me", accessToken, {
     headers: {
       Authorization: `Bearer ${accessToken}`,
     },
@@ -229,7 +322,7 @@ export async function fetchMe(accessToken: string) {
 }
 
 export async function fetchUsuarios(accessToken: string) {
-  const response = await fetch(`${API_BASE_URL}/usuarios/`, {
+  const response = await authenticatedFetch("/usuarios/", accessToken, {
     headers: {
       Authorization: `Bearer ${accessToken}`,
     },
@@ -239,7 +332,7 @@ export async function fetchUsuarios(accessToken: string) {
 }
 
 export async function updateUsuario(accessToken: string, id: string, payload: UpdateUsuarioPayload) {
-  const response = await fetch(`${API_BASE_URL}/usuarios/${id}`, {
+  const response = await authenticatedFetch(`/usuarios/${id}`, accessToken, {
     method: "PATCH",
     headers: {
       Authorization: `Bearer ${accessToken}`,
@@ -252,7 +345,7 @@ export async function updateUsuario(accessToken: string, id: string, payload: Up
 }
 
 export async function asignarGalponesUsuario(accessToken: string, id: string, galponesIds: string[]) {
-  const response = await fetch(`${API_BASE_URL}/usuarios/${id}/asignar-galpones`, {
+  const response = await authenticatedFetch(`/usuarios/${id}/asignar-galpones`, accessToken, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${accessToken}`,
@@ -265,7 +358,7 @@ export async function asignarGalponesUsuario(accessToken: string, id: string, ga
 }
 
 export async function fetchDashboardKpis(accessToken: string) {
-  const response = await fetch(`${API_BASE_URL}/dashboard/kpis`, {
+  const response = await authenticatedFetch("/dashboard/kpis", accessToken, {
     headers: {
       Authorization: `Bearer ${accessToken}`,
     },
@@ -275,7 +368,7 @@ export async function fetchDashboardKpis(accessToken: string) {
 }
 
 export async function fetchDashboardGalpones(accessToken: string) {
-  const response = await fetch(`${API_BASE_URL}/dashboard/ocupacion-por-galpon`, {
+  const response = await authenticatedFetch("/dashboard/ocupacion-por-galpon", accessToken, {
     headers: {
       Authorization: `Bearer ${accessToken}`,
     },
@@ -285,7 +378,7 @@ export async function fetchDashboardGalpones(accessToken: string) {
 }
 
 export async function fetchSedes(accessToken: string) {
-  const response = await fetch(`${API_BASE_URL}/sedes`, {
+  const response = await authenticatedFetch("/sedes", accessToken, {
     headers: {
       Authorization: `Bearer ${accessToken}`,
     },
@@ -295,7 +388,7 @@ export async function fetchSedes(accessToken: string) {
 }
 
 export async function fetchGalpones(accessToken: string) {
-  const response = await fetch(`${API_BASE_URL}/galpones`, {
+  const response = await authenticatedFetch("/galpones", accessToken, {
     headers: {
       Authorization: `Bearer ${accessToken}`,
     },
@@ -305,7 +398,7 @@ export async function fetchGalpones(accessToken: string) {
 }
 
 export async function fetchContainers(accessToken: string) {
-  const response = await fetch(`${API_BASE_URL}/containers?limit=500`, {
+  const response = await authenticatedFetch("/containers?limit=500", accessToken, {
     headers: {
       Authorization: `Bearer ${accessToken}`,
     },
@@ -315,7 +408,7 @@ export async function fetchContainers(accessToken: string) {
 }
 
 export async function fetchAlertasActivas(accessToken: string) {
-  const response = await fetch(`${API_BASE_URL}/alertas/activas`, {
+  const response = await authenticatedFetch("/alertas/activas", accessToken, {
     headers: {
       Authorization: `Bearer ${accessToken}`,
     },
@@ -343,15 +436,15 @@ export async function downloadReporte(
 ): Promise<ReportDownloadResult> {
   const endpoint = type === "pdf" ? "/reportes/movimientos/pdf" : type === "excel" ? "/reportes/movimientos/excel" : "/reportes/sernapesca";
   const suffix = query ? `?${query}` : "";
-  const response = await fetch(`${API_BASE_URL}${endpoint}${suffix}`, {
+  const response = await authenticatedFetch(`${endpoint}${suffix}`, accessToken, {
     headers: {
       Authorization: `Bearer ${accessToken}`,
     },
   });
 
   if (!response.ok) {
-    const body = await response.json().catch(() => null) as { detail?: string } | null;
-    throw new Error(body?.detail ?? "No se pudo descargar el reporte");
+    const body = await response.json().catch(() => null);
+    throw new ApiError(detailMessage(body) ?? "No se pudo descargar el reporte", response.status);
   }
 
   const buffer = await response.arrayBuffer();
@@ -364,7 +457,7 @@ export async function downloadReporte(
 }
 
 export async function fetchProductos(accessToken: string) {
-  const response = await fetch(`${API_BASE_URL}/productos?limit=500`, {
+  const response = await authenticatedFetch("/productos?limit=500", accessToken, {
     headers: {
       Authorization: `Bearer ${accessToken}`,
     },
@@ -375,7 +468,7 @@ export async function fetchProductos(accessToken: string) {
 
 export async function fetchMovimientos(accessToken: string, query = "") {
   const suffix = query ? `?${query}` : "";
-  const response = await fetch(`${API_BASE_URL}/movimientos/${suffix}`, {
+  const response = await authenticatedFetch(`/movimientos/${suffix}`, accessToken, {
     headers: {
       Authorization: `Bearer ${accessToken}`,
     },
@@ -385,7 +478,7 @@ export async function fetchMovimientos(accessToken: string, query = "") {
 }
 
 export async function createMovimiento(accessToken: string, payload: MovimientoPayload) {
-  const response = await fetch(`${API_BASE_URL}/movimientos`, {
+  const response = await authenticatedFetch("/movimientos", accessToken, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${accessToken}`,
@@ -398,7 +491,7 @@ export async function createMovimiento(accessToken: string, payload: MovimientoP
 }
 
 export async function approveMovimiento(accessToken: string, id: string) {
-  const response = await fetch(`${API_BASE_URL}/movimientos/${id}/aprobar`, {
+  const response = await authenticatedFetch(`/movimientos/${id}/aprobar`, accessToken, {
     method: "PATCH",
     headers: {
       Authorization: `Bearer ${accessToken}`,
@@ -409,7 +502,7 @@ export async function approveMovimiento(accessToken: string, id: string) {
 }
 
 export async function rejectMovimiento(accessToken: string, id: string, motivo_rechazo: string) {
-  const response = await fetch(`${API_BASE_URL}/movimientos/${id}/rechazar`, {
+  const response = await authenticatedFetch(`/movimientos/${id}/rechazar`, accessToken, {
     method: "PATCH",
     headers: {
       Authorization: `Bearer ${accessToken}`,
@@ -419,4 +512,34 @@ export async function rejectMovimiento(accessToken: string, id: string, motivo_r
   });
 
   return parseJson<ApiMovimientoRead>(response);
+}
+
+export async function syncMovimientos(
+  accessToken: string,
+  movimientos: MovimientoOfflinePayload[],
+) {
+  const response = await authenticatedFetch("/movimientos/sync", accessToken, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(movimientos),
+  });
+
+  return parseJson<{ resultados: SyncResult[] }>(response);
+}
+
+export async function fetchContainerPublicInfo(id: string) {
+  const response = await fetch(`${API_BASE_URL}/containers/${encodeURIComponent(id)}/info-publica`);
+  return parseJson<ContainerPublicInfo>(response);
+}
+
+export async function changePassword(
+  accessToken: string,
+  payload: { contrasena_actual: string; nueva_contrasena: string },
+) {
+  const response = await authenticatedFetch("/auth/change-password", accessToken, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  return parseJson<{ mensaje: string }>(response);
 }

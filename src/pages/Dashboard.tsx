@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis, Cell } from "recharts";
-import { Box, Bell, ArrowUpRight, Clock, XCircle } from "lucide-react";
+import { Box, Bell, ArrowUpRight, Clock, XCircle, type LucideIcon } from "lucide-react";
+import type { ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
@@ -19,7 +20,15 @@ import {
 } from "@/lib/api";
 import { estadoColor } from "@/lib/inventory";
 
-const KpiCard = ({ label, value, sub, icon: Icon, accent }: any) => (
+interface KpiCardProps {
+  label: string;
+  value: ReactNode;
+  sub?: ReactNode;
+  icon: LucideIcon;
+  accent: string;
+}
+
+const KpiCard = ({ label, value, sub, icon: Icon, accent }: KpiCardProps) => (
   <div className="kpi-card">
     <div className="flex items-start justify-between">
       <div>

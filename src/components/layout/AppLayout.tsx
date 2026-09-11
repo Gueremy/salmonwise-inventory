@@ -1,7 +1,7 @@
-import { Outlet, useLocation, Navigate } from "react-router-dom";
+import { Outlet, useLocation } from "react-router-dom";
 import { Sidebar } from "./Sidebar";
 import { Header } from "./Header";
-import { useRole } from "@/context/RoleContext";
+import { OfflineBanner } from "@/components/OfflineBanner";
 
 const titles: Record<string, string> = {
   "/dashboard": "Dashboard",
@@ -10,16 +10,13 @@ const titles: Record<string, string> = {
   "/alertas": "Alertas",
   "/reportes": "Reportes",
   "/inventario": "Inventario 3D",
+  "/usuarios": "Usuarios",
+  "/gerencia": "Panel Gerencial",
+  "/config": "Configuracion",
 };
 
 export const AppLayout = () => {
-  const { usuario } = useRole();
   const { pathname } = useLocation();
-
-  // Operario tiene su propia vista mobile
-  if (usuario.rol === "operario" && !pathname.startsWith("/operario")) {
-    return <Navigate to="/operario" replace />;
-  }
 
   const title = Object.entries(titles).find(([k]) => pathname.startsWith(k))?.[1];
 
@@ -28,6 +25,7 @@ export const AppLayout = () => {
       <Sidebar />
       <div className="flex-1 flex flex-col min-w-0">
         <Header title={title} />
+        <OfflineBanner />
         <main className="flex-1 overflow-auto">
           <Outlet />
         </main>
