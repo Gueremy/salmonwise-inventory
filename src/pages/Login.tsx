@@ -52,6 +52,8 @@ export default function Login() {
         nombre: me.nombre,
         rol: me.rol,
         sede: sedeLabel(me.id_sede),
+        id_organizacion: me.id_organizacion ?? "default",
+        permisos: me.permisos,
       };
 
       setUsuario(usuario);
@@ -142,7 +144,7 @@ export default function Login() {
           </Button>
 
           <p className="text-xs text-muted-foreground text-center">
-            Frontend conectado a axious-backend.onrender.com
+            SalmoTrack v2 · Plataforma de inventario
           </p>
         </div>
       </div>
