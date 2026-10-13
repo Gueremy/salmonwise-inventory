@@ -6,27 +6,27 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowDownToLine, ArrowUpFromLine, RefreshCw, ShieldCheck, Stethoscope } from "lucide-react";
+import { ArrowDownToLine, ArrowUpFromLine, RefreshCw } from "lucide-react";
 import type { InventoryContainerView } from "@/lib/inventory";
 import { useRole } from "@/context/RoleContext";
 import { createMovimiento, fetchProductos } from "@/lib/api";
+import { fetchMovementTypes } from "@/api/movements";
+import { SernapescaFields, SagFields } from "@/modules/pack-salmonero";
 import { toast } from "sonner";
 
 interface Props {
   open: boolean;
   onOpenChange: (b: boolean) => void;
-  container?: InventoryContainerView;
-  availableContainers?: InventoryContainerView[];
-  initialTipo?: Tipo;
+  container?: InventoryContainerView | any;
+  availableContainers?: InventoryContainerView[] | any[];
+  initialTipo?: string;
 }
 
-type Tipo = "entrada_proveedor" | "salida_produccion" | "traslado_interno";
-
-const tipos: { id: Tipo; label: string; icon: typeof ArrowDownToLine; desc: string }[] = [
-  { id: "entrada_proveedor", label: "Entrada de Proveedor", icon: ArrowDownToLine, desc: "Recepcion de insumo externo" },
-  { id: "salida_produccion", label: "Salida a Produccion", icon: ArrowUpFromLine, desc: "Despacho a planta o ponton" },
-  { id: "traslado_interno", label: "Traslado Interno", icon: RefreshCw, desc: "Movimiento entre containers" },
-];
+const defaultTypeIcons: Record<string, typeof ArrowDownToLine> = {
+  entrada_proveedor: ArrowDownToLine,
+  salida_produccion: ArrowUpFromLine,
+  traslado_interno: RefreshCw,
+};
 
 function formatDateInput(offsetDays = 0) {
   const date = new Date();
@@ -45,9 +45,9 @@ export const MovimientoForm = ({
   availableContainers = [],
   initialTipo = "entrada_proveedor",
 }: Props) => {
-  const { usuario, accessToken } = useRole();
+  const { usuario, accessToken, hasModule } = useRole();
   const queryClient = useQueryClient();
-  const [tipo, setTipo] = useState<Tipo>(initialTipo);
+  const [tipo, setTipo] = useState<string>(initialTipo);
   const [productoId, setProductoId] = useState("");
   const [containerOrigenId, setContainerOrigenId] = useState(container?.id ?? availableContainers[0]?.id ?? "");
   const [containerDestinoId, setContainerDestinoId] = useState("");
@@ -64,6 +64,12 @@ export const MovimientoForm = ({
   const [observaciones, setObservaciones] = useState("");
   const [error, setError] = useState<string | null>(null);
 
+  const typesQuery = useQuery({
+    queryKey: ["movement-types", accessToken],
+    enabled: Boolean(accessToken),
+    queryFn: () => fetchMovementTypes(accessToken!),
+  });
+
   const productsQuery = useQuery({
     queryKey: ["productos", accessToken],
     enabled: Boolean(accessToken),
@@ -74,9 +80,18 @@ export const MovimientoForm = ({
     },
   });
 
+  const movementTypes = typesQuery.data ?? [
+    { id: "entrada_proveedor", codigo: "ENT", nombre: "Entrada de Proveedor", requiere_origen: false, requiere_destino: true, requiere_aprobacion: true },
+    { id: "salida_produccion", codigo: "SAL", nombre: "Salida a Producción", requiere_origen: true, requiere_destino: false, requiere_aprobacion: false },
+    { id: "traslado_interno", codigo: "TRAS", nombre: "Traslado Interno", requiere_origen: true, requiere_destino: true, requiere_aprobacion: false },
+  ];
+
+  const currentTypeConfig = movementTypes.find((t) => t.id === tipo) ?? movementTypes[0];
+
   const selectedProduct = productsQuery.data?.find((item) => item.id === productoId) ?? null;
-  const showSernapesca = tipo === "entrada_proveedor";
-  const showSAG = tipo === "entrada_proveedor" && selectedProduct?.categoria === "veterinario";
+  const isPackSalmoneroActive = hasModule("pack_salmonero");
+  const showSernapesca = isPackSalmoneroActive && tipo === "entrada_proveedor";
+  const showSAG = isPackSalmoneroActive && tipo === "entrada_proveedor" && selectedProduct?.categoria === "veterinario";
   const isOperario = usuario.rol === "operario";
 
   const destinationOptions = useMemo(
@@ -104,14 +119,19 @@ export const MovimientoForm = ({
     setNumAutorizacionSag("");
     setObservaciones("");
     setError(null);
-  }, [availableContainers, container, initialTipo, open]);
+  }, [open, container?.id, availableContainers, initialTipo]);
+
+  const originContainer = availableContainers.find((item) => item.id === containerOrigenId) ?? container;
 
   const createMutation = useMutation({
-    mutationFn: ({ accessToken: token, payload }: { accessToken: string; payload: Parameters<typeof createMovimiento>[1] }) =>
+    mutationFn: ({ accessToken: token, payload }: { accessToken: string; payload: any }) =>
       createMovimiento(token, payload),
     onSuccess: (data) => {
-      const statusMessage = data.estado === "aprobado" ? "Movimiento registrado y aprobado" : "Movimiento registrado y enviado a flujo";
-      toast.success(statusMessage);
+      toast.success(
+        data.estado === "aprobado"
+          ? "Movimiento registrado y aplicado"
+          : "Movimiento registrado en estado pendiente de aprobacion",
+      );
       queryClient.invalidateQueries({ queryKey: ["inventory-snapshot"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard-kpis"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard-galpones"] });
@@ -127,22 +147,22 @@ export const MovimientoForm = ({
 
   const handleSubmit = () => {
     if (!accessToken) {
-      setError("No hay sesion activa.");
+      setError("No hay sesión activa.");
       return false;
     }
 
     if (!productoId) {
-      setError("Selecciona un producto.");
+      setError("Selecciona un producto o ítem.");
       return false;
     }
 
     if (!containerOrigenId) {
-      setError("Selecciona un container origen.");
+      setError("Selecciona una ubicación de origen.");
       return false;
     }
 
     if (!numeroLote.trim()) {
-      setError("Ingresa el numero de lote.");
+      setError("Ingresa el número de lote.");
       return false;
     }
 
@@ -153,13 +173,13 @@ export const MovimientoForm = ({
 
     if (showSernapesca) {
       if (!fechaFabricacion || !nombreProveedor.trim() || !numGuiaDespacho.trim() || !registroSanitario.trim()) {
-        setError("Completa todos los campos SERNAPESCA.");
+        setError("Completa todos los campos requeridos por SERNAPESCA.");
         return false;
       }
     }
 
-    if (tipo === "traslado_interno" && !containerDestinoId) {
-      setError("Selecciona el container destino.");
+    if (currentTypeConfig?.requiere_destino && !containerDestinoId) {
+      setError("Selecciona la ubicación de destino.");
       return false;
     }
 
@@ -180,106 +200,91 @@ export const MovimientoForm = ({
       payload: {
         id_container: containerOrigenId,
         id_producto: productoId,
-        tipo,
+        tipo: tipo as any,
         cantidad: Number(cantidad),
-        numero_lote: numeroLote.trim(),
+        numeroLote,
+        fecha_fabricacion: showSernapesca && fechaFabricacion ? toIsoDate(fechaFabricacion) : undefined,
         fecha_vencimiento: toIsoDate(fechaVencimiento),
-        fecha_fabricacion: showSernapesca ? toIsoDate(fechaFabricacion) : undefined,
-        nombre_proveedor: showSernapesca ? nombreProveedor.trim() : undefined,
-        num_guia_despacho: showSernapesca ? numGuiaDespacho.trim() : undefined,
-        registro_sanitario: showSernapesca ? registroSanitario.trim() : undefined,
-        temperatura_almacen: showSernapesca ? Number(temperaturaAlmacen) : undefined,
-        num_receta_retenida: showSAG ? numRecetaRetenida.trim() : undefined,
-        num_autorizacion_sag: showSAG ? numAutorizacionSag.trim() : undefined,
-        id_container_destino: tipo === "traslado_interno" ? containerDestinoId : undefined,
-        observaciones: observaciones.trim() || undefined,
+        nombre_proveedor: showSernapesca ? nombreProveedor : undefined,
+        num_guia_despacho: showSernapesca ? numGuiaDespacho : undefined,
+        registro_sanitario: showSernapesca ? registroSanitario : undefined,
+        temperatura_almacen: showSernapesca && temperaturaAlmacen ? Number(temperaturaAlmacen) : undefined,
+        num_receta_retenida: showSAG ? numRecetaRetenida : undefined,
+        num_autorizacion_sag: showSAG ? numAutorizacionSag : undefined,
+        id_container_destino: currentTypeConfig?.requiere_destino ? containerDestinoId : undefined,
+        observaciones: observaciones || undefined,
       },
     });
   };
 
-  const originContainer = availableContainers.find((item) => item.id === containerOrigenId);
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Registrar movimiento</DialogTitle>
+          <DialogTitle>Registrar movimiento de inventario</DialogTitle>
           <DialogDescription>
-            El formulario ahora registra movimientos reales contra FastAPI.
+            {isOperario
+              ? "El movimiento quedara pendiente de aprobacion por jefatura."
+              : "Formulario configurable conectado al motor de reglas del backend."}
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-5">
-          <div>
-            <Label className="mb-2 block">Tipo de movimiento</Label>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-              {tipos.map((item) => (
+        <div className="space-y-4 py-2">
+          {/* Selector dinámico de tipos de movimiento */}
+          <div className="grid grid-cols-3 gap-2">
+            {movementTypes.map((t) => {
+              const Icon = defaultTypeIcons[t.id] ?? ArrowDownToLine;
+              const isSelected = tipo === t.id;
+
+              return (
                 <button
-                  key={item.id}
+                  key={t.id}
                   type="button"
-                  onClick={() => setTipo(item.id)}
-                  className={`text-left p-3 rounded-md border-2 transition ${
-                    tipo === item.id ? "border-primary bg-primary/5" : "border-border hover:border-primary/40"
+                  onClick={() => setTipo(t.id)}
+                  className={`p-3 rounded-lg border text-left transition flex flex-col justify-between ${
+                    isSelected
+                      ? "border-primary bg-primary/10 text-primary font-medium"
+                      : "border-border hover:border-primary/50 text-muted-foreground"
                   }`}
                 >
-                  <item.icon className={`h-5 w-5 mb-1.5 ${tipo === item.id ? "text-primary" : "text-muted-foreground"}`} />
-                  <div className="text-sm font-semibold">{item.label}</div>
-                  <div className="text-[11px] text-muted-foreground">{item.desc}</div>
+                  <Icon className="h-4 w-4 mb-1.5" />
+                  <div>
+                    <div className="text-xs font-semibold leading-tight text-foreground">{t.nombre}</div>
+                    <div className="text-[10px] text-muted-foreground mt-0.5 line-clamp-1">{t.codigo}</div>
+                  </div>
                 </button>
-              ))}
-            </div>
+              );
+            })}
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label>Producto</Label>
-              <Select value={productoId} onValueChange={setProductoId}>
+              <Label>Ubicación origen *</Label>
+              <Select value={containerOrigenId} onValueChange={setContainerOrigenId}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Selecciona producto" />
+                  <SelectValue placeholder="Selecciona origen" />
                 </SelectTrigger>
                 <SelectContent>
-                  {productsQuery.data?.map((product) => (
-                    <SelectItem key={product.id} value={product.id}>
-                      {product.nombre} · {product.categoria}
+                  {availableContainers.map((item) => (
+                    <SelectItem key={item.id} value={item.id}>
+                      {item.codigo} · {item.producto ?? item.tipoProductoPermitido ?? "Disponible"}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
 
-            <div className="space-y-2">
-              <Label>Container origen</Label>
-              {container ? (
-                <div className="h-10 rounded-md border border-border px-3 flex items-center text-sm">
-                  {container.codigo}
-                </div>
-              ) : (
-                <Select value={containerOrigenId} onValueChange={setContainerOrigenId}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecciona container" />
-                  </SelectTrigger>
-                  <SelectContent className="max-h-72">
-                    {availableContainers.map((item) => (
-                      <SelectItem key={item.id} value={item.id}>
-                        {item.codigo} · {item.ocupacion}%
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
-            </div>
-
-            {tipo === "traslado_interno" && (
-              <div className="space-y-2 sm:col-span-2">
-                <Label>Container destino</Label>
+            {currentTypeConfig?.requiere_destino && (
+              <div className="space-y-2">
+                <Label>Ubicación destino *</Label>
                 <Select value={containerDestinoId} onValueChange={setContainerDestinoId}>
                   <SelectTrigger>
                     <SelectValue placeholder="Selecciona destino" />
                   </SelectTrigger>
-                  <SelectContent className="max-h-72">
+                  <SelectContent>
                     {destinationOptions.map((item) => (
                       <SelectItem key={item.id} value={item.id}>
-                        {item.codigo} · {item.ocupacion}%
+                        {item.codigo} · {item.ocupacion ?? 0}%
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -287,59 +292,90 @@ export const MovimientoForm = ({
               </div>
             )}
 
-            <div className="space-y-2">
-              <Label>Cantidad</Label>
-              <Input type="number" min="1" value={cantidad} onChange={(event) => setCantidad(event.target.value)} />
+            <div className="space-y-2 sm:col-span-2">
+              <Label>Ítem / Producto *</Label>
+              <Select value={productoId} onValueChange={setProductoId}>
+                <SelectTrigger>
+                  <SelectValue placeholder={productsQuery.isLoading ? "Cargando ítems..." : "Selecciona ítem"} />
+                </SelectTrigger>
+                <SelectContent>
+                  {productsQuery.data?.map((prod) => (
+                    <SelectItem key={prod.id} value={prod.id}>
+                      {prod.nombre} · {prod.codigo_barras} ({prod.categoria})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="space-y-2">
-              <Label>Numero de lote</Label>
-              <Input value={numeroLote} onChange={(event) => setNumeroLote(event.target.value)} placeholder="LOT-2026-..." />
+              <Label>Cantidad *</Label>
+              <Input
+                type="number"
+                min="1"
+                value={cantidad}
+                onChange={(event) => setCantidad(event.target.value)}
+              />
             </div>
 
             <div className="space-y-2">
-              <Label>Fecha de vencimiento</Label>
-              <Input type="date" value={fechaVencimiento} onChange={(event) => setFechaVencimiento(event.target.value)} />
+              <Label>Número de lote *</Label>
+              <Input
+                value={numeroLote}
+                onChange={(event) => setNumeroLote(event.target.value)}
+                placeholder="LOTE-2026-X"
+              />
             </div>
 
             <div className="space-y-2">
-              <Label>Unidad referencial</Label>
-              <div className="h-10 rounded-md border border-border px-3 flex items-center text-sm text-muted-foreground">
-                {selectedProduct?.unidad_medida ?? originContainer?.codigo ?? "Se define por producto/container"}
+              <Label>Fecha de vencimiento *</Label>
+              <Input
+                type="date"
+                value={fechaVencimiento}
+                onChange={(event) => setFechaVencimiento(event.target.value)}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Unidad de medida</Label>
+              <div className="h-10 rounded-md border border-border px-3 flex items-center text-sm text-muted-foreground bg-muted/20">
+                {selectedProduct?.unidad_medida ?? originContainer?.unidadMedida ?? "unidades"}
               </div>
             </div>
 
             <div className="space-y-2 sm:col-span-2">
               <Label>Observaciones</Label>
-              <Textarea rows={2} value={observaciones} onChange={(event) => setObservaciones(event.target.value)} placeholder="Opcional" />
+              <Textarea
+                rows={2}
+                value={observaciones}
+                onChange={(event) => setObservaciones(event.target.value)}
+                placeholder="Observaciones operativas (opcional)"
+              />
             </div>
           </div>
 
+          {/* Bloque modular SERNAPESCA (solo si módulo pack_salmonero está activo) */}
           {showSernapesca && (
-            <div className="rounded-md border border-secondary/30 bg-secondary/5 p-4 space-y-3 animate-fade-in">
-              <div className="flex items-center gap-2 text-secondary font-semibold text-sm">
-                <ShieldCheck className="h-4 w-4" /> Datos SERNAPESCA
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <Field label="Fecha de fabricacion *" type="date" value={fechaFabricacion} onChange={setFechaFabricacion} />
-                <Field label="Nombre del proveedor *" value={nombreProveedor} onChange={setNombreProveedor} />
-                <Field label="N° guia de despacho *" value={numGuiaDespacho} onChange={setNumGuiaDespacho} />
-                <Field label="Temperatura almacen *" value={temperaturaAlmacen} onChange={setTemperaturaAlmacen} placeholder="°C" />
-                <Field label="Registro sanitario *" value={registroSanitario} onChange={setRegistroSanitario} className="sm:col-span-2" />
-              </div>
-            </div>
+            <SernapescaFields
+              nombreProveedor={nombreProveedor}
+              setNombreProveedor={setNombreProveedor}
+              numGuiaDespacho={numGuiaDespacho}
+              setNumGuiaDespacho={setNumGuiaDespacho}
+              registroSanitario={registroSanitario}
+              setRegistroSanitario={setRegistroSanitario}
+              temperaturaAlmacen={temperaturaAlmacen}
+              setTemperaturaAlmacen={setTemperaturaAlmacen}
+            />
           )}
 
+          {/* Bloque modular SAG (solo si módulo pack_salmonero está activo y es veterinario) */}
           {showSAG && (
-            <div className="rounded-md border border-status-cuarentena/30 bg-status-cuarentena/5 p-4 space-y-3 animate-fade-in">
-              <div className="flex items-center gap-2 text-status-cuarentena font-semibold text-sm">
-                <Stethoscope className="h-4 w-4" /> Datos SAG
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <Field label="N° receta retenida *" value={numRecetaRetenida} onChange={setNumRecetaRetenida} />
-                <Field label="N° autorizacion SAG *" value={numAutorizacionSag} onChange={setNumAutorizacionSag} />
-              </div>
-            </div>
+            <SagFields
+              numRecetaRetenida={numRecetaRetenida}
+              setNumRecetaRetenida={setNumRecetaRetenida}
+              numAutorizacionSag={numAutorizacionSag}
+              setNumAutorizacionSag={setNumAutorizacionSag}
+            />
           )}
 
           {error && (
@@ -350,7 +386,9 @@ export const MovimientoForm = ({
         </div>
 
         <div className="flex justify-end gap-2 pt-2 border-t border-border">
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            Cancelar
+          </Button>
           <Button
             className="bg-primary hover:bg-secondary"
             disabled={createMutation.isPending || productsQuery.isLoading}
@@ -360,31 +398,10 @@ export const MovimientoForm = ({
               }
             }}
           >
-            {createMutation.isPending ? "Registrando..." : isOperario ? "Registrar movimiento" : "Registrar movimiento"}
+            {createMutation.isPending ? "Registrando..." : "Registrar movimiento"}
           </Button>
         </div>
       </DialogContent>
     </Dialog>
   );
 };
-
-const Field = ({
-  label,
-  type = "text",
-  placeholder,
-  className = "",
-  value,
-  onChange,
-}: {
-  label: string;
-  type?: string;
-  placeholder?: string;
-  className?: string;
-  value: string;
-  onChange: (value: string) => void;
-}) => (
-  <div className={`space-y-1.5 ${className}`}>
-    <Label className="text-xs">{label}</Label>
-    <Input type={type} placeholder={placeholder} value={value} onChange={(event) => onChange(event.target.value)} />
-  </div>
-);
