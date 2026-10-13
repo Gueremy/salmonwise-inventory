@@ -1,0 +1,17 @@
+{
+  "name": "SalmoTrack v2 — Plataforma Visual de Inventario",
+  "short_name": "SalmoTrack",
+  "description": "Sistema de gestión de inventario visual y espacial 2D/3D con soporte offline.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#0f172a",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "/favicon.ico",
+      "sizes": "64x64 32x32 24x24 16x16",
+      "type": "image/x-icon"
+    }
+  ]
+}

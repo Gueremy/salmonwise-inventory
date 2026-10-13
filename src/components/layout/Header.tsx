@@ -1,6 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { rolLabel, useRole } from "@/context/RoleContext";
-import { Wifi, WifiOff, ChevronDown, LogOut } from "lucide-react";
+import { ChevronDown, LogOut } from "lucide-react";
+import { OfflineStatusIndicator } from "@/components/OfflineStatusIndicator";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -19,14 +20,7 @@ export const Header = ({ title }: { title?: string }) => {
       <div>{title && <h1 className="text-lg font-semibold tracking-tight">{title}</h1>}</div>
 
       <div className="flex items-center gap-3">
-        <div
-          className={`flex items-center gap-1.5 text-xs font-medium px-2.5 py-1.5 rounded-md ${
-            online ? "bg-status-disponible/10 text-status-disponible" : "bg-status-medio/10 text-status-medio"
-          }`}
-        >
-          {online ? <Wifi className="h-3.5 w-3.5" /> : <WifiOff className="h-3.5 w-3.5" />}
-          {online ? "API ONLINE" : "API OFFLINE"}
-        </div>
+        <OfflineStatusIndicator />
 
         <DropdownMenu>
           <DropdownMenuTrigger className="flex items-center gap-2 px-3 py-1.5 rounded-md hover:bg-muted text-sm">
