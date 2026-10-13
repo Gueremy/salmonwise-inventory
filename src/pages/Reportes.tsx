@@ -15,7 +15,7 @@ function saveBlob(result: ReportDownloadResult) {
 }
 
 export default function Reportes() {
-  const { accessToken } = useRole();
+  const { accessToken, hasModule } = useRole();
   const [dias, setDias] = useState("30");
   const [tipo, setTipo] = useState("");
   const [loading, setLoading] = useState<string | null>(null);
@@ -77,9 +77,11 @@ export default function Reportes() {
           <Button onClick={() => handleDownload("excel")} disabled={Boolean(loading)} variant="outline">
             <FileSpreadsheet className="h-4 w-4 mr-2" /> {loading === "excel" ? "Generando..." : "Excel movimientos"}
           </Button>
-          <Button onClick={() => handleDownload("sernapesca")} disabled={Boolean(loading)} variant="outline">
-            <FileSpreadsheet className="h-4 w-4 mr-2" /> {loading === "sernapesca" ? "Generando..." : "Excel SERNAPESCA"}
-          </Button>
+          {hasModule("pack_salmonero") && (
+            <Button onClick={() => handleDownload("sernapesca")} disabled={Boolean(loading)} variant="outline">
+              <FileSpreadsheet className="h-4 w-4 mr-2" /> {loading === "sernapesca" ? "Generando..." : "Excel SERNAPESCA"}
+            </Button>
+          )}
         </div>
       </section>
 

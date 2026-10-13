@@ -214,7 +214,11 @@ export default function ReconciliationDashboard() {
                   variant="outline"
                   className="text-xs h-8"
                   onClick={() => {
-                    navigate(`/sites`);
+                    if (inc.id_zona) {
+                      navigate(`/zones/${inc.id_zona}?focus=${inc.id_ubicacion}`);
+                    } else {
+                      navigate(`/sites`);
+                    }
                   }}
                 >
                   <Eye className="h-3.5 w-3.5 mr-1 text-primary" />

@@ -1,5 +1,5 @@
-import { useMemo, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useMemo, useState, useEffect } from "react";
+import { useParams, useSearchParams } from "react-router-dom";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { ZoneScene } from "@/components/three/ZoneScene";
 import { ZoneGrid2D } from "@/components/two-d/ZoneGrid2D";
@@ -12,6 +12,10 @@ import { useInventorySnapshot } from "@/hooks/use-inventory-snapshot";
 
 export default function GalponDetalle() {
   const { id } = useParams();
+  const [searchParams] = useSearchParams();
+  const focusId = searchParams.get("focus");
+  const modeParam = searchParams.get("mode");
+
   const inventoryQuery = useInventorySnapshot();
   const galpones = inventoryQuery.data?.galpones ?? [];
   const sedes = inventoryQuery.data?.sedes ?? [];
@@ -20,9 +24,15 @@ export default function GalponDetalle() {
     [inventoryQuery.data?.containers, id],
   );
 
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(focusId);
   const [openMov, setOpenMov] = useState(false);
-  const [viewMode, setViewMode] = useState<"3d" | "2d">("3d");
+  const [viewMode, setViewMode] = useState<"3d" | "2d">(modeParam === "2d" ? "2d" : "3d");
+
+  useEffect(() => {
+    if (focusId) {
+      setSelectedId(focusId);
+    }
+  }, [focusId]);
 
   const selected = display.find((item) => item.id === selectedId) ?? null;
 
@@ -105,12 +115,14 @@ export default function GalponDetalle() {
                 locations={display}
                 selectedId={selectedId}
                 onSelect={(loc) => setSelectedId(loc.id)}
+                highlightedId={focusId}
               />
             ) : (
               <ZoneGrid2D
                 locations={display}
                 selectedId={selectedId}
                 onSelect={(loc) => setSelectedId(loc.id)}
+                highlightedId={focusId}
               />
             )
           ) : (
