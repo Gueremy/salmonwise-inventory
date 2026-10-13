@@ -46,9 +46,9 @@ export default function GalponDetalle() {
     <div className="p-6 animate-fade-in">
       <Breadcrumbs
         items={[
-          { label: "Sedes", to: "/sedes" },
-          { label: sede.nombre, to: `/sedes/${sede.id}` },
-          { label: `Galpon ${galpon.codigo} · ${galpon.nombre}` },
+          { label: "Sitios", to: "/sites" },
+          { label: sede.nombre, to: `/sites/${sede.id}` },
+          { label: `Zona ${galpon.codigo} · ${galpon.nombre}` },
         ]}
       />
 

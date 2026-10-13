@@ -37,7 +37,7 @@ export default function SedeDetalle() {
 
   return (
     <div className="p-6 animate-fade-in">
-      <Breadcrumbs items={[{ label: "Sedes", to: "/sedes" }, { label: sede.nombre }]} />
+      <Breadcrumbs items={[{ label: "Sitios", to: "/sites" }, { label: sede.nombre }]} />
 
       <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-6">
         <aside className="space-y-4">
@@ -86,7 +86,7 @@ export default function SedeDetalle() {
                 return (
                   <button
                     key={galpon.id}
-                    onClick={() => navigate(`/galpon/${galpon.id}`)}
+                    onClick={() => navigate(`/sites/${id}/zones/${galpon.id}`)}
                     className="w-full flex items-center justify-between p-2.5 rounded-md hover:bg-muted text-left transition"
                   >
                     <span className="flex items-center gap-2.5">

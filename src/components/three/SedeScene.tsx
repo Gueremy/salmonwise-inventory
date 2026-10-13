@@ -124,7 +124,7 @@ export const SedeScene = ({ galpones, tipo, sedeNombre }: Props) => {
               key={g.id}
               g={g}
               position={[(i - offset) * spacing, -0.3, 0]}
-              onClick={() => navigate(`/galpon/${g.id}`)}
+              onClick={() => navigate(`/zones/${g.id}`)}
             />
           ))}
 

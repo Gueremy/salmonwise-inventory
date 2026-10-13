@@ -49,7 +49,7 @@ export default function Sedes() {
               return (
                 <Link
                   key={sede.id}
-                  to={`/sedes/${sede.id}`}
+                  to={`/sites/${sede.id}`}
                   className="group bg-card border border-border rounded-lg p-4 hover:shadow-md hover:border-primary transition-all"
                 >
                   <div className="flex items-start justify-between mb-3">

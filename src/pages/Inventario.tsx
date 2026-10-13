@@ -30,7 +30,7 @@ export default function Inventario() {
           return (
             <Link
               key={sede.id}
-              to={`/sedes/${sede.id}`}
+              to={`/sites/${sede.id}`}
               className="bg-card border border-border rounded-lg p-5 hover:border-primary hover:shadow-md transition"
             >
               <div className="flex items-center gap-2 mb-3">

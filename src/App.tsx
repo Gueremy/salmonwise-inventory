@@ -46,16 +46,32 @@ const App = () => (
               <Route path="/operario" element={<Operario />} />
               <Route element={<AppLayout />}>
                 <Route path="/dashboard" element={<Dashboard />} />
-                <Route path="/sedes" element={<Sedes />} />
+                
+                {/* Rutas genéricas SalmoTrack v2 */}
+                <Route path="/sites" element={<Sedes />} />
+                <Route path="/sites/:id" element={<SedeDetalle />} />
+                <Route path="/sites/:siteId/zones/:id" element={<GalponDetalle />} />
+                <Route path="/zones/:id" element={<GalponDetalle />} />
+                <Route path="/locations/:id" element={<GalponDetalle />} />
+                <Route path="/movements" element={<Movimientos />} />
+                <Route path="/alerts" element={<Alertas />} />
+                <Route path="/reports" element={<Reportes />} />
+                <Route path="/users" element={<Usuarios />} />
+                <Route path="/settings" element={<Stub title="Configuración de Organización" />} />
+                <Route path="/reconciliation" element={<Stub title="Conciliación ERP/WMS" />} />
+                <Route path="/layout" element={<Stub title="Editor de Layout 2D/3D" />} />
+
+                {/* Compatibilidad y redirecciones transparentes */}
+                <Route path="/sedes" element={<Navigate to="/sites" replace />} />
                 <Route path="/sedes/:id" element={<SedeDetalle />} />
                 <Route path="/galpon/:id" element={<GalponDetalle />} />
                 <Route path="/inventario" element={<Inventario />} />
-                <Route path="/movimientos" element={<Movimientos />} />
-                <Route path="/alertas" element={<Alertas />} />
+                <Route path="/movimientos" element={<Navigate to="/movements" replace />} />
+                <Route path="/alertas" element={<Navigate to="/alerts" replace />} />
                 <Route path="/gerencia" element={<Gerencia />} />
-                <Route path="/reportes" element={<Reportes />} />
-                <Route path="/usuarios" element={<Usuarios />} />
-                <Route path="/config" element={<Stub title="Configuracion" />} />
+                <Route path="/reportes" element={<Navigate to="/reports" replace />} />
+                <Route path="/usuarios" element={<Navigate to="/users" replace />} />
+                <Route path="/config" element={<Navigate to="/settings" replace />} />
               </Route>
             </Route>
             <Route path="*" element={<NotFound />} />
