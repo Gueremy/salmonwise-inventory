@@ -18,6 +18,8 @@ import Gerencia from "./pages/Gerencia";
 import Inventario from "./pages/Inventario";
 import Usuarios from "./pages/Usuarios";
 import Reportes from "./pages/Reportes";
+import ReconciliationDashboard from "./pages/reconciliation/ReconciliationDashboard";
+import ImportWizard from "./pages/reconciliation/ImportWizard";
 import Stub from "./pages/Stub";
 import NotFound from "./pages/NotFound";
 
@@ -58,7 +60,8 @@ const App = () => (
                 <Route path="/reports" element={<Reportes />} />
                 <Route path="/users" element={<Usuarios />} />
                 <Route path="/settings" element={<Stub title="Configuración de Organización" />} />
-                <Route path="/reconciliation" element={<Stub title="Conciliación ERP/WMS" />} />
+                <Route path="/reconciliation" element={<ReconciliationDashboard />} />
+                <Route path="/reconciliation/import" element={<ImportWizard />} />
                 <Route path="/layout" element={<Stub title="Editor de Layout 2D/3D" />} />
 
                 {/* Compatibilidad y redirecciones transparentes */}

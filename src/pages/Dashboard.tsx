@@ -19,7 +19,15 @@ import {
 } from "@/lib/api";
 import { estadoColor } from "@/lib/inventory";
 
-const KpiCard = ({ label, value, sub, icon: Icon, accent }: any) => (
+interface KpiCardProps {
+  label: string;
+  value: string | number;
+  sub?: string;
+  icon: React.ComponentType<{ className?: string }>;
+  accent: string;
+}
+
+const KpiCard = ({ label, value, sub, icon: Icon, accent }: KpiCardProps) => (
   <div className="kpi-card">
     <div className="flex items-start justify-between">
       <div>
