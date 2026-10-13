@@ -50,7 +50,7 @@ export default function Usuarios() {
   const usuarios = usuariosQuery.data?.items ?? [];
   const selectedUser = usuarios.find((usuario) => usuario.id === selectedId) ?? usuarios[0] ?? null;
   const galpones = inventoryQuery.data?.galpones ?? [];
-  const sedes = inventoryQuery.data?.sedes ?? [];
+  const sedes = useMemo(() => inventoryQuery.data?.sedes ?? [], [inventoryQuery.data?.sedes]);
   const sedeById = useMemo(() => new Map(sedes.map((sede) => [sede.id, sede.nombre])), [sedes]);
 
   useEffect(() => {
@@ -58,7 +58,7 @@ export default function Usuarios() {
     setSelectedId(selectedUser.id);
     setDraft(buildDraft(selectedUser));
     setSelectedGalpones([]);
-  }, [selectedUser?.id]);
+  }, [selectedUser]);
 
   const updateMutation = useMutation({
     mutationFn: ({ id, payload }: { id: string; payload: UpdateUsuarioPayload }) => updateUsuario(accessToken!, id, payload),

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { Wifi, WifiOff, RefreshCw, AlertCircle, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useRole } from "@/context/RoleContext";
@@ -13,14 +13,32 @@ export const OfflineStatusIndicator = () => {
   const [pendingCount, setPendingCount] = useState(0);
   const [syncing, setSyncing] = useState(false);
 
-  const checkPending = async () => {
+  const checkPending = useCallback(async () => {
     try {
       const count = await getPendingMovementsCount();
       setPendingCount(count);
     } catch {
       // IndexedDB puede estar cerrado
     }
-  };
+  }, []);
+
+  const handleSync = useCallback(async () => {
+    if (!accessToken || syncing) return;
+    setSyncing(true);
+    try {
+      const res = await syncAllPending(accessToken, organizacion.id);
+      if (res.total > 0) {
+        toast.success(`Sincronización completa: ${res.sincronizados} procesados, ${res.rechazados} rechazados.`);
+        queryClient.invalidateQueries({ queryKey: ["movimientos"] });
+        queryClient.invalidateQueries({ queryKey: ["inventory-snapshot"] });
+      }
+      await checkPending();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Error al sincronizar movimientos");
+    } finally {
+      setSyncing(false);
+    }
+  }, [accessToken, syncing, organizacion.id, queryClient, checkPending]);
 
   useEffect(() => {
     checkPending();
@@ -42,25 +60,7 @@ export const OfflineStatusIndicator = () => {
       window.removeEventListener("online", handleOnline);
       window.removeEventListener("offline", handleOffline);
     };
-  }, [accessToken, setOnline]);
-
-  const handleSync = async () => {
-    if (!accessToken || syncing) return;
-    setSyncing(true);
-    try {
-      const res = await syncAllPending(accessToken, organizacion.id);
-      if (res.total > 0) {
-        toast.success(`Sincronización completa: ${res.sincronizados} procesados, ${res.rechazados} rechazados.`);
-        queryClient.invalidateQueries({ queryKey: ["movimientos"] });
-        queryClient.invalidateQueries({ queryKey: ["inventory-snapshot"] });
-      }
-      await checkPending();
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Error al sincronizar movimientos");
-    } finally {
-      setSyncing(false);
-    }
-  };
+  }, [accessToken, setOnline, checkPending, handleSync]);
 
   return (
     <div className="flex items-center gap-2">

@@ -44,3 +44,9 @@ venv/
 # Logs
 logs/
 *.log
+
+# Node / Frontend
+node_modules/
+dist/
+dist-ssr/
+*.local

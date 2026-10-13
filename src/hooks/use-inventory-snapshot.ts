@@ -5,6 +5,7 @@ import { fetchZonesBySite } from "@/api/zones";
 import { fetchLocationsByZone } from "@/api/locations";
 import { fetchActiveAlerts } from "@/api/alerts";
 import { buildInventorySnapshot } from "@/lib/inventory";
+import type { ApiSede, ApiContainer } from "@/lib/api";
 
 export function useInventorySnapshot() {
   const { accessToken } = useRole();
@@ -36,7 +37,7 @@ export function useInventorySnapshot() {
         sedes: sites.map((s) => ({
           id: s.id,
           nombre: s.nombre,
-          tipo: (s.tipo === "embarcacion" ? "ponton" : s.tipo === "planta" ? "planta" : "bodega") as any,
+          tipo: (s.tipo === "embarcacion" ? "ponton" : s.tipo === "planta" ? "planta" : "bodega") as ApiSede["tipo"],
           ubicacion: s.ubicacion_geografica ?? null,
           latitud: null,
           longitud: null,
@@ -57,7 +58,9 @@ export function useInventorySnapshot() {
           id_galpon: l.id_zona,
           posicion_fila: Number(l.layout?.posicion_fila) || 0,
           posicion_col: Number(l.layout?.posicion_col) || 0,
-          estado: l.estado as any,
+          estado: (["disponible", "medio", "critico", "mantenimiento", "cuarentena"].includes(l.estado)
+            ? l.estado
+            : "disponible") as ApiContainer["estado"],
           tipo_producto_permitido: String(l.atributos?.tipo_producto_permitido ?? "general"),
           capacidad_max: l.capacidad_maxima,
           ocupacion_actual: l.ocupacion_actual,

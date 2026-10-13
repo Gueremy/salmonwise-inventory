@@ -43,7 +43,7 @@ export async function fetchSiteLayoutTree(token: string, siteId: string): Promis
   return apiFetch<LayoutSitioTree>(`/api/v2/layout/sitios/${siteId}`, { token });
 }
 
-export async function updateZoneLayout(token: string, zoneId: string, layout: Record<string, unknown>): Promise<any> {
+export async function updateZoneLayout(token: string, zoneId: string, layout: Record<string, unknown>): Promise<unknown> {
   return apiFetch(`/api/v2/layout/zonas/${zoneId}`, {
     method: "PATCH",
     token,
@@ -51,7 +51,7 @@ export async function updateZoneLayout(token: string, zoneId: string, layout: Re
   });
 }
 
-export async function updateLocationLayout(token: string, locationId: string, layout: LocationCoordinates): Promise<any> {
+export async function updateLocationLayout(token: string, locationId: string, layout: LocationCoordinates): Promise<unknown> {
   return apiFetch(`/api/v2/layout/ubicaciones/${locationId}`, {
     method: "PATCH",
     token,

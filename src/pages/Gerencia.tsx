@@ -34,7 +34,7 @@ const tipoIcon: Record<string, typeof Building2> = {
 export default function Gerencia() {
   const { accessToken, organizacion } = useRole();
   const inventoryQuery = useInventorySnapshot();
-  const sedes = inventoryQuery.data?.sedes ?? [];
+  const sedes = useMemo(() => inventoryQuery.data?.sedes ?? [], [inventoryQuery.data?.sedes]);
 
   const movementsQuery = useQuery({
     queryKey: ["gerencia-movements", accessToken],
@@ -42,7 +42,7 @@ export default function Gerencia() {
     queryFn: () => fetchMovements(accessToken!, "limit=200"),
   });
 
-  const movements = movementsQuery.data?.items ?? [];
+  const movements = useMemo(() => movementsQuery.data?.items ?? [], [movementsQuery.data?.items]);
 
   // 1. Radar comparativo computado desde datos reales de los sitios
   const radarData = useMemo(() => {

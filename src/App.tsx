@@ -20,6 +20,7 @@ import Usuarios from "./pages/Usuarios";
 import Reportes from "./pages/Reportes";
 import ReconciliationDashboard from "./pages/reconciliation/ReconciliationDashboard";
 import ImportWizard from "./pages/reconciliation/ImportWizard";
+import LayoutEditor from "./pages/layout/LayoutEditor";
 import Stub from "./pages/Stub";
 import NotFound from "./pages/NotFound";
 
@@ -62,7 +63,7 @@ const App = () => (
                 <Route path="/settings" element={<Stub title="Configuración de Organización" />} />
                 <Route path="/reconciliation" element={<ReconciliationDashboard />} />
                 <Route path="/reconciliation/import" element={<ImportWizard />} />
-                <Route path="/layout" element={<Stub title="Editor de Layout 2D/3D" />} />
+                <Route path="/layout" element={<LayoutEditor />} />
 
                 {/* Compatibilidad y redirecciones transparentes */}
                 <Route path="/sedes" element={<Navigate to="/sites" replace />} />

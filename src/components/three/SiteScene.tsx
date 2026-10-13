@@ -6,8 +6,19 @@ import { useNavigate } from "react-router-dom";
 import { useRole } from "@/context/RoleContext";
 import { resolveLocationVisualState } from "@/domain/location";
 
+export interface SceneZone {
+  id: string;
+  codigo: string;
+  nombre?: string;
+  ocupacion_prom?: number;
+  ocupacion_promedio?: number;
+  containers?: number;
+  total_ubicaciones?: number;
+  [key: string]: unknown;
+}
+
 interface Props {
-  zones: any[];
+  zones: SceneZone[];
   tipo: string;
   siteName: string;
   siteId?: string;
@@ -18,7 +29,7 @@ const ZoneBox = ({
   position,
   onClick,
 }: {
-  zone: any;
+  zone: SceneZone;
   position: [number, number, number];
   onClick: () => void;
 }) => {

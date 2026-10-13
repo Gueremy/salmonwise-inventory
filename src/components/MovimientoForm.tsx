@@ -9,16 +9,29 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ArrowDownToLine, ArrowUpFromLine, RefreshCw } from "lucide-react";
 import type { InventoryContainerView } from "@/lib/inventory";
 import { useRole } from "@/context/RoleContext";
-import { createMovimiento, fetchProductos } from "@/lib/api";
+import { createMovimiento, fetchProductos, type CreateMovimientoPayload } from "@/lib/api";
 import { fetchMovementTypes } from "@/api/movements";
 import { SernapescaFields, SagFields } from "@/modules/pack-salmonero";
 import { toast } from "sonner";
 
+export interface MovimientoContainerOption {
+  id: string;
+  codigo: string;
+  capacidadMax?: number;
+  capacidad_maxima?: number;
+  ocupacionActual?: number;
+  ocupacion_actual?: number;
+  producto?: string | null;
+  lote?: string | null;
+  tipoProductoPermitido?: string;
+  [key: string]: unknown;
+}
+
 interface Props {
   open: boolean;
   onOpenChange: (b: boolean) => void;
-  container?: InventoryContainerView | any;
-  availableContainers?: InventoryContainerView[] | any[];
+  container?: InventoryContainerView | MovimientoContainerOption;
+  availableContainers?: (InventoryContainerView | MovimientoContainerOption)[];
   initialTipo?: string;
 }
 
@@ -124,7 +137,7 @@ export const MovimientoForm = ({
   const originContainer = availableContainers.find((item) => item.id === containerOrigenId) ?? container;
 
   const createMutation = useMutation({
-    mutationFn: ({ accessToken: token, payload }: { accessToken: string; payload: any }) =>
+    mutationFn: ({ accessToken: token, payload }: { accessToken: string; payload: CreateMovimientoPayload }) =>
       createMovimiento(token, payload),
     onSuccess: (data) => {
       toast.success(
@@ -200,7 +213,7 @@ export const MovimientoForm = ({
       payload: {
         id_container: containerOrigenId,
         id_producto: productoId,
-        tipo: tipo as any,
+        tipo: tipo as CreateMovimientoPayload["tipo"],
         cantidad: Number(cantidad),
         numeroLote,
         fecha_fabricacion: showSernapesca && fechaFabricacion ? toIsoDate(fechaFabricacion) : undefined,

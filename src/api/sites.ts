@@ -1,5 +1,6 @@
 import { apiFetch } from "./client";
 import { Site } from "../domain/site";
+import type { ApiSede } from "@/lib/api";
 
 export interface PaginatedResponse<T> {
   items: T[];
@@ -16,7 +17,7 @@ export async function fetchSites(token: string): Promise<Site[]> {
     return Array.isArray(res) ? res : res.items;
   } catch {
     // Capa adaptadora de transición contra /sedes legacy si backend v2 no estuviera montado
-    const legacy = await apiFetch<PaginatedResponse<any>>("/sedes", { token });
+    const legacy = await apiFetch<PaginatedResponse<ApiSede>>("/sedes", { token });
     return legacy.items.map((s) => ({
       id: s.id,
       id_organizacion: "default",

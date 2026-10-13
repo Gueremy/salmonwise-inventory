@@ -1,8 +1,8 @@
-import { SiteScene } from "./SiteScene";
+import { SiteScene, type SceneZone } from "./SiteScene";
 import { InventoryGalpon, TipoSede } from "@/lib/inventory";
 
 interface Props {
-  galpones: InventoryGalpon[] | any[];
+  galpones: (InventoryGalpon | SceneZone)[];
   tipo: TipoSede | string;
   sedeNombre: string;
   sedeId?: string;

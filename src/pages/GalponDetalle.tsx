@@ -15,13 +15,9 @@ export default function GalponDetalle() {
   const inventoryQuery = useInventorySnapshot();
   const galpones = inventoryQuery.data?.galpones ?? [];
   const sedes = inventoryQuery.data?.sedes ?? [];
-  const containers = inventoryQuery.data?.containers ?? [];
-  const galpon = galpones.find((item) => item.id === id);
-  const sede = sedes.find((item) => item.id === galpon?.sedeId);
-
   const display = useMemo(
-    () => containers.filter((item) => item.galponId === id),
-    [containers, id],
+    () => (inventoryQuery.data?.containers ?? []).filter((item) => item.galponId === id),
+    [inventoryQuery.data?.containers, id],
   );
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -37,6 +33,9 @@ export default function GalponDetalle() {
   if (inventoryQuery.isError) {
     return <div className="p-6 text-sm text-muted-foreground">No se pudo cargar la zona desde la API.</div>;
   }
+
+  const galpon = galpones.find((item) => item.id === id);
+  const sede = sedes.find((item) => item.id === galpon?.sedeId);
 
   if (!galpon || !sede) {
     return <div className="p-6">Zona no encontrada.</div>;

@@ -1,6 +1,7 @@
 import { apiFetch } from "./client";
 import { CreateMovementPayload, Movement, MovementTypeConfig } from "../domain/movement";
 import { PaginatedResponse } from "./sites";
+import type { ApiMovimientoListItem } from "@/lib/api";
 
 export interface SyncMovimientoItem {
   uuid_local: string;
@@ -71,7 +72,7 @@ export async function fetchMovements(token: string, query = ""): Promise<Paginat
     return await apiFetch<PaginatedResponse<Movement>>(`/api/v2/movimientos${suffix}`, { token });
   } catch {
     // Adaptador legacy /movimientos/
-    const legacy = await apiFetch<PaginatedResponse<any>>(`/movimientos/${suffix}`, { token });
+    const legacy = await apiFetch<PaginatedResponse<ApiMovimientoListItem>>(`/movimientos/${suffix}`, { token });
     return {
       items: legacy.items.map((m) => ({
         id: m.id,

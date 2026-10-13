@@ -6,8 +6,31 @@ import { useRole } from "@/context/RoleContext";
 import { resolveLocationVisualState } from "@/domain/location";
 import { MovimientoForm } from "@/components/MovimientoForm";
 
+export interface DrawerLocation {
+  id?: string;
+  codigo?: string;
+  nombre?: string;
+  estado?: string;
+  ocupacion_actual?: number;
+  ocupacionActual?: number;
+  capacidad_maxima?: number;
+  capacidadMax?: number;
+  unidad_capacidad?: string;
+  unidadMedida?: string;
+  item_nombre?: string;
+  producto?: string;
+  lote_principal?: string;
+  lote?: string;
+  temperatura_actual?: number | null;
+  temperatura?: number | null;
+  fecha_vencimiento?: string | null;
+  fechaVencimiento?: string | null;
+  atributos?: Record<string, unknown>;
+  [key: string]: unknown;
+}
+
 interface Props {
-  location: any | null;
+  location: DrawerLocation | null;
   onClose: () => void;
   zoneName?: string;
   onRefresh?: () => void;

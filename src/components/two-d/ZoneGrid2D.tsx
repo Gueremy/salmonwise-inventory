@@ -1,10 +1,29 @@
 import { useRole } from "@/context/RoleContext";
 import { resolveLocationVisualState } from "@/domain/location";
 
+export interface GridLocation {
+  id: string;
+  codigo: string;
+  estado?: string;
+  ocupacion_actual?: number;
+  ocupacionActual?: number;
+  capacidad_maxima?: number;
+  capacidadMax?: number;
+  item_nombre?: string;
+  producto?: string;
+  lote_principal?: string;
+  lote?: string;
+  atributos?: {
+    tipo_producto_permitido?: string;
+    [key: string]: unknown;
+  };
+  [key: string]: unknown;
+}
+
 interface Props {
-  locations: any[];
+  locations: GridLocation[];
   selectedId: string | null;
-  onSelect: (location: any) => void;
+  onSelect: (location: GridLocation) => void;
   highlightedId?: string | null;
 }
 

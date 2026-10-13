@@ -1,12 +1,13 @@
 import { apiFetch } from "./client";
 import { Alert } from "../domain/alert";
+import type { ApiAlerta } from "@/lib/api";
 
 export async function fetchActiveAlerts(token: string): Promise<Alert[]> {
   try {
     return await apiFetch<Alert[]>("/api/v2/alertas/activas", { token });
   } catch {
     // Adaptador legacy /alertas/activas
-    const legacy = await apiFetch<any[]>("/alertas/activas", { token });
+    const legacy = await apiFetch<ApiAlerta[]>("/alertas/activas", { token });
     return legacy.map((a) => ({
       id: a.id,
       id_organizacion: "default",

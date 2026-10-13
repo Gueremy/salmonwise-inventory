@@ -5,10 +5,38 @@ import * as THREE from "three";
 import { Location, resolveLocationVisualState } from "@/domain/location";
 import { useRole } from "@/context/RoleContext";
 
+export interface SceneLocation {
+  id: string;
+  codigo: string;
+  estado?: string;
+  ocupacion_actual?: number;
+  ocupacionActual?: number;
+  capacidad_maxima?: number;
+  capacidadMax?: number;
+  layout?: {
+    x?: number;
+    y?: number;
+    z?: number;
+    width?: number;
+    height?: number;
+    depth?: number;
+    posicion_col?: number;
+    posicion_fila?: number;
+    [key: string]: unknown;
+  };
+  posicion_col?: number;
+  posicion_fila?: number;
+  item_nombre?: string;
+  producto?: string;
+  lote_principal?: string;
+  lote?: string;
+  [key: string]: unknown;
+}
+
 interface Props {
-  locations: Location[] | any[];
+  locations: SceneLocation[];
   selectedId: string | null;
-  onSelect: (location: any) => void;
+  onSelect: (location: SceneLocation) => void;
   highlightedId?: string | null;
 }
 
@@ -20,7 +48,7 @@ const LocationBox = ({
   highlighted,
   onSelect,
 }: {
-  location: any;
+  location: SceneLocation;
   position: [number, number, number];
   dimensions?: [number, number, number];
   selected: boolean;

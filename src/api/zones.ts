@@ -1,6 +1,7 @@
 import { apiFetch } from "./client";
 import { Zone, ZoneTreeNode } from "../domain/zone";
 import { PaginatedResponse } from "./sites";
+import type { ApiGalpon } from "@/lib/api";
 
 export async function fetchZonesBySite(token: string, siteId: string): Promise<Zone[]> {
   try {
@@ -11,7 +12,7 @@ export async function fetchZonesBySite(token: string, siteId: string): Promise<Z
     return Array.isArray(res) ? res : res.items;
   } catch {
     // Adaptador legacy /galpones
-    const legacy = await apiFetch<PaginatedResponse<any>>("/galpones", { token });
+    const legacy = await apiFetch<PaginatedResponse<ApiGalpon>>("/galpones", { token });
     return legacy.items
       .filter((g) => g.id_sede === siteId)
       .map((g) => ({

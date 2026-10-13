@@ -2,6 +2,7 @@ import { apiFetch } from "./client";
 import { Item } from "../domain/item";
 import { Lot } from "../domain/lot";
 import { PaginatedResponse } from "./sites";
+import type { ApiProducto } from "@/lib/api";
 
 export async function fetchItems(token: string): Promise<Item[]> {
   try {
@@ -9,7 +10,7 @@ export async function fetchItems(token: string): Promise<Item[]> {
     return Array.isArray(res) ? res : res.items;
   } catch {
     // Adaptador legacy /productos
-    const legacy = await apiFetch<PaginatedResponse<any>>("/productos?limit=500", { token });
+    const legacy = await apiFetch<PaginatedResponse<ApiProducto>>("/productos?limit=500", { token });
     return legacy.items.map((p) => ({
       id: p.id,
       id_organizacion: "default",

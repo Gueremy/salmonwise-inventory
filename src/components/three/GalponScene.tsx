@@ -1,10 +1,10 @@
-import { ZoneScene } from "./ZoneScene";
+import { ZoneScene, type SceneLocation } from "./ZoneScene";
 import { InventoryContainerView } from "@/lib/inventory";
 
 interface Props {
-  containers: InventoryContainerView[] | any[];
+  containers: (InventoryContainerView | SceneLocation)[];
   selectedId: string | null;
-  onSelect: (c: any) => void;
+  onSelect: (c: SceneLocation) => void;
   highlightedId?: string | null;
 }
 

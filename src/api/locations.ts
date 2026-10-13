@@ -1,6 +1,7 @@
 import { apiFetch } from "./client";
 import { Location } from "../domain/location";
 import { PaginatedResponse } from "./sites";
+import type { ApiContainer } from "@/lib/api";
 
 export async function fetchLocationsByZone(token: string, zoneId: string): Promise<Location[]> {
   try {
@@ -11,7 +12,7 @@ export async function fetchLocationsByZone(token: string, zoneId: string): Promi
     return Array.isArray(res) ? res : res.items;
   } catch {
     // Adaptador legacy /containers
-    const legacy = await apiFetch<PaginatedResponse<any>>("/containers?limit=500", { token });
+    const legacy = await apiFetch<PaginatedResponse<ApiContainer>>("/containers?limit=500", { token });
     return legacy.items
       .filter((c) => c.id_galpon === zoneId)
       .map((c) => ({
