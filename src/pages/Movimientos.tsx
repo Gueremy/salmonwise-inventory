@@ -78,8 +78,10 @@ export default function Movimientos() {
 
   const approveMutation = useMutation({
     mutationFn: ({ token, id }: { token: string; id: string }) => approveMovimiento(token, id),
-    onSuccess: () => {
-      toast.success("Movimiento aprobado");
+    onSuccess: (result) => {
+      toast.success("efecto_stock" in result
+        ? "Movimiento aprobado"
+        : "Etapa aprobada; la solicitud espera la siguiente aprobación");
       queryClient.invalidateQueries({ queryKey: ["movimientos"] });
       queryClient.invalidateQueries({ queryKey: ["inventory-snapshot"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard-kpis"] });

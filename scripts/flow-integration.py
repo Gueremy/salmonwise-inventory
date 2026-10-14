@@ -29,6 +29,21 @@ async def fill_entry(page, quantity):
     return dialog
 
 
+async def fill_stock_operation(page, action, type_name, origin, destination, quantity=1):
+    await page.get_by_role("button", name=action).click()
+    dialog = page.get_by_role("dialog")
+    await expect(dialog.get_by_label("Tipo de movimiento")).to_have_text(type_name)
+    await dialog.get_by_label("Ubicación de origen").click()
+    await page.get_by_role("option", name=origin).click()
+    if destination:
+        await dialog.get_by_label("Ubicación de destino").click()
+        await page.get_by_role("option", name=destination).click()
+    await dialog.get_by_label("Ítem", exact=True).click()
+    await page.get_by_role("option").first.click()
+    await dialog.get_by_label("Cantidad").fill(str(quantity))
+    return dialog
+
+
 async def main():
     base_url = os.environ.get("SALMO_FRONT_URL", "http://localhost:5173")
     async with async_playwright() as playwright:
@@ -53,6 +68,44 @@ async def main():
         online_response = await created.value
         assert online_response.status == 201, await online_response.text()
         await expect(dialog).not_to_be_visible()
+
+        if os.environ.get("SALMO_QA_EXTENDED") == "1":
+            origin = os.environ.get("SALMO_QA_LOCATION_CODE", "RACK-A-01")
+            destination = os.environ.get("SALMO_QA_DESTINATION_CODE", "RACK-B-01")
+            dialog = await fill_stock_operation(page, "Registrar Salida", "Salida QA por etapas", origin, None)
+            async with page.expect_response(lambda response: response.request.method == "POST"
+                                            and "/api/v2/movimientos/solicitudes" in response.url) as submitted:
+                await dialog.get_by_role("button", name="Registrar", exact=True).click()
+            request = await (await submitted.value).json()
+            assert request["estado"] == "revision", request
+            await page.goto(f"{base_url}/movements", wait_until="networkidle")
+            for expected_stage in ("autorizacion", None):
+                await page.locator("tbody tr").first.click()
+                async with page.expect_response(lambda response: response.request.method == "PATCH"
+                                                and f"/solicitudes/{request['id']}/aprobar" in response.url) as approved:
+                    await page.get_by_role("button", name="Aprobar movimiento").click()
+                stage_response = await (await approved.value).json()
+                if expected_stage:
+                    assert stage_response["estado"] == expected_stage, stage_response
+                else:
+                    assert stage_response["efecto_stock"] == "salida", stage_response
+            await page.goto(f"{base_url}/operario", wait_until="networkidle")
+            dialog = await fill_stock_operation(page, "Traslado", "Traslado QA", origin, destination)
+            async with page.expect_response(lambda response: response.request.method == "POST"
+                                            and "/api/v2/movimientos/solicitudes" in response.url) as transferred:
+                await dialog.get_by_role("button", name="Registrar", exact=True).click()
+            transfer_response = await transferred.value
+            assert transfer_response.status == 201, await transfer_response.text()
+            transfer_request = await transfer_response.json()
+            assert transfer_request["estado"] == "aprobada", transfer_request
+            confirmed = await page.evaluate("""async ({requestId, apiUrl}) => {
+                const token = localStorage.getItem('axious.accessToken');
+                const response = await fetch(`${apiUrl}/api/v2/movimientos/?page=1&size=100`,
+                                             {headers: {Authorization: `Bearer ${token}`}});
+                return (await response.json()).items.some(item => item.id_solicitud === requestId);
+            }""", {"requestId": transfer_request["id"],
+                     "apiUrl": os.environ.get("SALMO_API_URL", "http://localhost:18000")})
+            assert confirmed, "El traslado no apareció en el libro confirmado"
 
         dialog = await fill_entry(page, 2)
         await context.set_offline(True)
@@ -104,6 +157,7 @@ async def main():
         await page.goto(f"{base_url}/dashboard")
         await expect(page.get_by_role("heading", name="Ingresar")).to_be_visible(timeout=15000)
         print(json.dumps({"online_status": online_response.status,
+                          "extended_movements": os.environ.get("SALMO_QA_EXTENDED") == "1",
                           "offline_sync": result["resultados"][0]["estado"],
                           "offline_after_reload": "ok", "mixed_rejected": mixed_result["rechazados"],
                           "qr_manual": "ok", "expired_session": "logged_out"}))

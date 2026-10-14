@@ -2,7 +2,7 @@
 
 Estas dos ramas locales forman una sola entrega funcional:
 
-Backend compatible con esta entrega: `dae8fe35d6a797d8ba8a90f2dc2d38970c3b8a92` en `feat/backend-v2-complete`. El commit frontend que contiene esta guía identifica la otra mitad de la entrega.
+Backend compatible con esta entrega: `15cd776cd541a71ce03b752e7fe7c06c33893efc` en `feat/backend-v2-complete`. El commit frontend que contiene esta guía identifica la otra mitad de la entrega.
 
 | Repositorio | Rama local | Punto de partida |
 | --- | --- | --- |
@@ -28,6 +28,8 @@ Desde el frontend: `npm run build`, `npx tsc --noEmit -p tsconfig.app.json`, `np
 Se levantaron ambos servicios con PostgreSQL migrado desde cero. `scripts/smoke-integration.py` comprueba ingreso y ocho pantallas en escritorio (1440 px) y móvil (390 px), sin errores JavaScript ni respuestas API de error. Requiere Playwright, Chromium y una cuenta de QA con permisos, suministrada mediante `SALMO_QA_EMAIL`/`SALMO_QA_PASSWORD`. Este smoke verifica navegación y consultas.
 
 `scripts/flow-integration.py` completa una entrada online, guarda un movimiento offline, comprueba la cola tras recargar, sincroniza, envía un lote mixto aceptado/rechazado, prueba ingreso manual del código QR y cierra la sesión al recibir un 401. Usa las mismas variables de cuenta QA y `SALMO_QA_LOCATION_CODE` si el código de ubicación difiere de `RACK-A-01`. `scripts/accessibility-audit.py` ejecuta axe-core para WCAG 2.1 A/AA sobre nueve estados de pantallas, incluidos diálogos y vistas de 390 px; el último resultado fue cero infracciones. La paleta de estados configurada por la organización se aplica a los componentes de inventario; etiquetas y textos genéricos ya no dependen de una empresa concreta.
+
+Con `SALMO_QA_EXTENDED=1`, el mismo script registra una salida, aprueba sus dos etapas desde la lista de solicitudes, ejecuta un traslado y confirma que éste figura en el libro inmutable. Requiere preparar el destino y los tipos de QA con `python -m scripts.seed_browser_flow_qa` desde el backend, sobre la base `axious_v2_completion_test`; el seed rechaza otras bases.
 
 En pantallas pequeñas, la navegación se abre desde el encabezado y deja el ancho completo al contenido; el smoke móvil recorre el menú y comprueba que la página no desborde horizontalmente.
 
