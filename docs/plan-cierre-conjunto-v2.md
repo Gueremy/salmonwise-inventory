@@ -4,6 +4,17 @@
 
 **Meta:** backend ~98 % y frontend ~95 %, con un recorrido operativo verificable de extremo a extremo. El porcentaje restante corresponde a conectores de terceros y despliegue/ensayo con datos reales, que dependen de accesos e infraestructura externos.
 
+## Avance ejecutado del cierre
+
+- Gerencia usa agregados reales; se eliminaron tendencias y gráficas sintéticas.
+- CSV/XLSX tienen vista previa del servidor y perfiles de mapeo guardables/seleccionables.
+- Exportaciones superiores a 10 000 filas descargan todas las páginas en ZIP. Pendiente una instantánea consistente bajo escrituras concurrentes y ensayo de memoria con volumen real.
+- Outbox transaccional para webhooks de movimientos e importación; rollback y deduplicación validados en PostgreSQL.
+- Migraciones verificadas, 151 pruebas backend, 6 PostgreSQL y 15 frontend; TypeScript, lint sin errores y build pasan.
+- Smoke de ingreso y ocho pantallas pasa a 1440 y 390 px, sin errores JavaScript/API; script reproducible en `scripts/smoke-integration.py`.
+
+**El plan completo aún no está cerrado.** Quedan automatización E2E de mutaciones/offline/sesión expirada, revisión de personalización y accesibilidad, QR en dispositivos, concurrencia del mismo UUID/reglas de alerta, carga representativa, migración/rollback con datos autorizados y conectores reales. Los porcentajes meta no se acreditan sólo con el smoke.
+
 ## Fase 0 — Fijar la versión conjunta
 
 - Conservar el trabajo original sin modificar de `/workspace/AXIOUS`. Backend de cierre: `feat/backend-v2-complete` en copia separada; frontend de cierre: `feat/frontend-v2-integration-fixes`.

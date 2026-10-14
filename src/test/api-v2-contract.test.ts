@@ -1,8 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { approveMovement, createMovement, rejectMovement } from "@/api/movements";
-import { fetchInconsistencies, fetchSupervisorKpis, uploadReconciliationFile } from "@/api/reconciliation";
+import { createMappingProfile, fetchInconsistencies, fetchMappingProfiles, fetchSupervisorKpis, previewReconciliationFile, uploadReconciliationFile } from "@/api/reconciliation";
 import { fetchItems } from "@/api/items";
 import { resolveAlert } from "@/api/alerts";
+import { fetchManagementSummary } from "@/api/management";
 
 const fetchMock = vi.fn();
 const json = (data: unknown) => new Response(JSON.stringify(data), {
@@ -81,5 +82,30 @@ describe("contratos API v2 compartidos con backend", () => {
     await resolveAlert("token", "alert-1");
     expect(fetchMock.mock.calls[0][0]).toContain("/api/v2/alertas/alert-1/resolver");
     expect(fetchMock.mock.calls[0][1].method).toBe("PATCH");
+  });
+
+  it("consulta agregados gerenciales reales", async () => {
+    fetchMock.mockResolvedValueOnce(json({ movimientos_diarios: [], top_items: [] }));
+    const summary = await fetchManagementSummary("token");
+    expect(summary.top_items).toEqual([]);
+    expect(fetchMock.mock.calls[0][0]).toContain("/api/v2/dashboard/gerencia");
+  });
+
+  it("previsualiza Excel y reutiliza perfiles de mapeo del backend", async () => {
+    const file = new File(["contenido"], "inventario.xlsx");
+    const mapping = { codigo_ubicacion: "POS", codigo_item: "SKU", cantidad: "QTY" };
+    fetchMock.mockResolvedValueOnce(json({ columnas: ["POS", "SKU", "QTY"], filas: [], total_filas: 1 }));
+    fetchMock.mockResolvedValueOnce(json([{ id: "profile-1", nombre: "ERP", mapeo: mapping }]));
+    fetchMock.mockResolvedValueOnce(json({ id: "profile-1", nombre: "ERP", mapeo: mapping }));
+    fetchMock.mockResolvedValueOnce(json({ job: { id: "job-1" }, inconsistencias: [] }));
+    expect((await previewReconciliationFile("token", file)).columnas).toContain("POS");
+    expect((await fetchMappingProfiles("token"))[0].id).toBe("profile-1");
+    await createMappingProfile("token", "ERP", mapping);
+    await uploadReconciliationFile("token", file, mapping, "profile-1");
+    expect(fetchMock.mock.calls[0][0]).toContain("/api/v2/importacion/previsualizar");
+    expect(fetchMock.mock.calls[2][0]).toContain("/api/v2/importacion/mapeos");
+    const body = fetchMock.mock.calls[3][1].body as FormData;
+    expect(body.get("id_mapping_profile")).toBe("profile-1");
+    expect(body.has("mapeo_json")).toBe(false);
   });
 });

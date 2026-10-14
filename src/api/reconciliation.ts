@@ -93,6 +93,36 @@ export interface ImportMapping {
   codigo_zona?: string;
 }
 
+export interface ImportPreview {
+  columnas: string[];
+  filas: Array<Record<string, string>>;
+  total_filas: number;
+}
+
+export interface MappingProfile {
+  id: string;
+  nombre: string;
+  mapeo: ImportMapping;
+}
+
+export function previewReconciliationFile(token: string, file: File): Promise<ImportPreview> {
+  const formData = new FormData();
+  formData.append("file", file);
+  return apiFetch<ImportPreview>("/api/v2/importacion/previsualizar", {
+    method: "POST", token, body: formData,
+  });
+}
+
+export function fetchMappingProfiles(token: string): Promise<MappingProfile[]> {
+  return apiFetch<MappingProfile[]>("/api/v2/importacion/mapeos", { token });
+}
+
+export function createMappingProfile(token: string, nombre: string, mapeo: ImportMapping): Promise<MappingProfile> {
+  return apiFetch<MappingProfile>("/api/v2/importacion/mapeos", {
+    method: "POST", token, body: JSON.stringify({ nombre, mapeo }),
+  });
+}
+
 export interface ReconciliationResult {
   job: { id: string; total_registros: number; registros_inconsistentes: number };
   inconsistencias: BackendInconsistency[];
@@ -102,10 +132,12 @@ export async function uploadReconciliationFile(
   token: string,
   file: File,
   mapping?: ImportMapping,
+  profileId?: string,
 ): Promise<ReconciliationResult> {
   const formData = new FormData();
   formData.append("file", file);
-  if (mapping) formData.append("mapeo_json", JSON.stringify(mapping));
+  if (profileId) formData.append("id_mapping_profile", profileId);
+  else if (mapping) formData.append("mapeo_json", JSON.stringify(mapping));
   return apiFetch<ReconciliationResult>("/api/v2/importacion/conciliar", {
     method: "POST",
     token,

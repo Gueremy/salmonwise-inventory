@@ -8,11 +8,8 @@ import {
   XAxis,
   YAxis,
   CartesianGrid,
-  Radar,
-  RadarChart,
-  PolarAngleAxis,
-  PolarGrid,
-  PolarRadiusAxis,
+  Bar,
+  BarChart,
   Legend,
 } from "recharts";
 import { ocupacionToEstado, estadoColor } from "@/lib/inventory";
@@ -20,7 +17,7 @@ import { Bell, FileText, FileSpreadsheet, Ship, Factory, Warehouse, Building2, P
 import { Button } from "@/components/ui/button";
 import { useInventorySnapshot } from "@/hooks/use-inventory-snapshot";
 import { useRole } from "@/context/RoleContext";
-import { fetchMovements } from "@/api/movements";
+import { fetchManagementSummary } from "@/api/management";
 import { downloadReport } from "@/api/reports";
 import { toast } from "sonner";
 
@@ -36,67 +33,19 @@ export default function Gerencia() {
   const inventoryQuery = useInventorySnapshot();
   const sedes = useMemo(() => inventoryQuery.data?.sedes ?? [], [inventoryQuery.data?.sedes]);
 
-  const movementsQuery = useQuery({
-    queryKey: ["gerencia-movements", accessToken],
+  const managementQuery = useQuery({
+    queryKey: ["gerencia-summary", accessToken],
     enabled: Boolean(accessToken),
-    queryFn: () => fetchMovements(accessToken!, "limit=200"),
+    queryFn: () => fetchManagementSummary(accessToken!),
   });
 
-  const movements = useMemo(() => movementsQuery.data?.items ?? [], [movementsQuery.data?.items]);
-
-  // 1. Radar comparativo computado desde datos reales de los sitios
-  const radarData = useMemo(() => {
-    return [
-      {
-        metric: "Ocupación %",
-        ...Object.fromEntries(sedes.map((s) => [s.nombre, s.ocupacion])),
-      },
-      {
-        metric: "Capacidad",
-        ...Object.fromEntries(sedes.map((s) => [s.nombre, Math.max(10, 100 - s.alertas * 15)])),
-      },
-      {
-        metric: "Alertas",
-        ...Object.fromEntries(sedes.map((s) => [s.nombre, Math.min(100, s.alertas * 25)])),
-      },
-      {
-        metric: "Disponibilidad",
-        ...Object.fromEntries(sedes.map((s) => [s.nombre, Math.max(0, 100 - s.ocupacion)])),
-      },
-    ];
-  }, [sedes]);
-
-  // 2. Líneas de evolución dinámica basadas en las métricas de los sitios
-  const lineData = useMemo(() => {
-    return Array.from({ length: 15 }).map((_, i) => {
-      const day = `D${i + 1}`;
-      const entry: Record<string, string | number> = { dia: day };
-      sedes.forEach((s, idx) => {
-        const variance = Math.sin((i + idx) / 2) * 4;
-        entry[s.nombre] = Math.max(0, Math.min(100, Math.round(s.ocupacion + variance)));
-      });
-      return entry;
-    });
-  }, [sedes]);
-
-  // 3. Top ítems con mayor rotación calculados desde movimientos reales
-  const topProducts = useMemo(() => {
-    const counts = new Map<string, number>();
-    movements.forEach((m) => {
-      const name = m.item_nombre || "Ítem general";
-      counts.set(name, (counts.get(name) ?? 0) + 1);
-    });
-
-    const sorted = Array.from(counts.entries())
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 5);
-
-    return sorted.map(([producto, rotacion]) => ({
-      producto,
-      rotacion: `${rotacion} movs`,
-      trend: "+12%",
-    }));
-  }, [movements]);
+  const lineData = managementQuery.data?.movimientos_diarios ?? [];
+  const topProducts = managementQuery.data?.top_items ?? [];
+  const siteSummaryData = useMemo(() => sedes.map((s) => ({
+    nombre: s.nombre, ocupacion: s.ocupacion,
+    disponible: Math.max(0, 100 - s.ocupacion),
+  })), [sedes]);
+  const hasMovementHistory = lineData.some((day) => day.total > 0);
 
   const handleExport = async (type: "pdf" | "excel") => {
     if (!accessToken) return;
@@ -168,66 +117,56 @@ export default function Gerencia() {
         )}
       </div>
 
-      {/* Gráficos Recharts */}
+      {managementQuery.isError && (
+        <div role="alert" className="rounded border border-destructive/30 p-3 text-sm text-destructive">
+          No se pudo consultar el historial gerencial del backend.
+        </div>
+      )}
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="bg-card border border-border rounded-lg p-5 shadow-sm">
-          <h3 className="font-semibold mb-1">Evolución de ocupación por sitio</h3>
-          <p className="text-xs text-muted-foreground mb-4">Comportamiento comparativo</p>
-          <div className="h-72">
+          <h3 className="font-semibold mb-1">Movimientos confirmados por día</h3>
+          <p className="text-xs text-muted-foreground mb-4">Últimos 15 días · hora UTC</p>
+          {hasMovementHistory ? <div className="h-72">
             <ResponsiveContainer>
               <LineChart data={lineData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
-                <XAxis dataKey="dia" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
-                <YAxis tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} unit="%" domain={[0, 100]} />
+                <XAxis dataKey="fecha" tickFormatter={(value: string) => value.slice(5)} tick={{ fontSize: 11 }} />
+                <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
                 <Tooltip contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12 }} />
                 <Legend wrapperStyle={{ fontSize: 11 }} />
-                {sedes.map((s, idx) => (
-                  <Line
-                    key={s.id}
-                    type="monotone"
-                    dataKey={s.nombre}
-                    stroke={chartColors[idx % chartColors.length]}
-                    strokeWidth={2}
-                    dot={false}
-                  />
-                ))}
+                <Line type="monotone" dataKey="entradas" name="Entradas" stroke={chartColors[0]} strokeWidth={2} />
+                <Line type="monotone" dataKey="salidas" name="Salidas" stroke={chartColors[1]} strokeWidth={2} />
+                <Line type="monotone" dataKey="traslados" name="Traslados" stroke={chartColors[2]} strokeWidth={2} />
               </LineChart>
             </ResponsiveContainer>
-          </div>
+          </div> : <p className="py-20 text-center text-sm text-muted-foreground">No hay movimientos confirmados en los últimos 15 días.</p>}
         </div>
 
         <div className="bg-card border border-border rounded-lg p-5 shadow-sm">
-          <h3 className="font-semibold mb-1">Comparativo de desempeño multi-sitio</h3>
-          <p className="text-xs text-muted-foreground mb-4">Ocupación · Capacidad · Alertas · Disponibilidad</p>
-          <div className="h-72">
+          <h3 className="font-semibold mb-1">Ocupación actual por sitio</h3>
+          <p className="text-xs text-muted-foreground mb-4">Porcentaje ocupado y disponible</p>
+          {siteSummaryData.length ? <div className="h-72">
             <ResponsiveContainer>
-              <RadarChart data={radarData}>
-                <PolarGrid stroke="hsl(var(--border))" />
-                <PolarAngleAxis dataKey="metric" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
-                <PolarRadiusAxis tick={{ fontSize: 10 }} angle={30} domain={[0, 100]} />
-                {sedes.map((s, idx) => (
-                  <Radar
-                    key={s.id}
-                    name={s.nombre}
-                    dataKey={s.nombre}
-                    stroke={chartColors[idx % chartColors.length]}
-                    fill={chartColors[idx % chartColors.length]}
-                    fillOpacity={0.16}
-                  />
-                ))}
+              <BarChart data={siteSummaryData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+                <XAxis dataKey="nombre" tick={{ fontSize: 11 }} />
+                <YAxis domain={[0, 100]} unit="%" tick={{ fontSize: 11 }} />
+                <Tooltip />
                 <Legend wrapperStyle={{ fontSize: 11 }} />
-              </RadarChart>
+                <Bar dataKey="ocupacion" name="Ocupación" fill={chartColors[0]} />
+                <Bar dataKey="disponible" name="Disponible" fill={chartColors[1]} />
+              </BarChart>
             </ResponsiveContainer>
-          </div>
+          </div> : <p className="py-20 text-center text-sm text-muted-foreground">No hay sitios para comparar.</p>}
         </div>
       </div>
 
-      {/* Top 5 Ítems con mayor rotación calculados */}
       <div className="bg-card border border-border rounded-lg overflow-hidden shadow-sm">
         <div className="p-5 border-b border-border">
           <h3 className="font-semibold flex items-center gap-2">
             <Package className="h-4 w-4 text-primary" />
-            Ítems con mayor rotación operativa registrada
+            Ítems con más movimientos confirmados en 15 días
           </h3>
         </div>
         <table className="w-full text-sm">
@@ -235,23 +174,21 @@ export default function Gerencia() {
             <tr>
               <th className="text-left px-5 py-3 font-medium">#</th>
               <th className="text-left px-5 py-3 font-medium">Ítem / Producto</th>
-              <th className="text-left px-5 py-3 font-medium">Rotación</th>
-              <th className="text-left px-5 py-3 font-medium">Estado</th>
+              <th className="text-left px-5 py-3 font-medium">Movimientos</th>
             </tr>
           </thead>
           <tbody>
             {topProducts.map((p, i) => (
-              <tr key={p.producto} className="border-t border-border">
+              <tr key={p.id_item} className="border-t border-border">
                 <td className="px-5 py-3 text-muted-foreground">{i + 1}</td>
-                <td className="px-5 py-3 font-medium">{p.producto}</td>
-                <td className="px-5 py-3">{p.rotacion}</td>
-                <td className="px-5 py-3 text-status-disponible font-medium">{p.trend}</td>
+                <td className="px-5 py-3 font-medium">{p.nombre}</td>
+                <td className="px-5 py-3">{p.movimientos}</td>
               </tr>
             ))}
             {topProducts.length === 0 && (
               <tr>
-                <td colSpan={4} className="px-5 py-6 text-center text-sm text-muted-foreground">
-                  No hay movimientos registrados para calcular rotación.
+                <td colSpan={3} className="px-5 py-6 text-center text-sm text-muted-foreground">
+                  No hay movimientos confirmados en los últimos 15 días.
                 </td>
               </tr>
             )}
