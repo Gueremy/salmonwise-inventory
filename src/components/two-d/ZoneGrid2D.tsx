@@ -17,7 +17,6 @@ export interface GridLocation {
     tipo_producto_permitido?: string;
     [key: string]: unknown;
   };
-  [key: string]: unknown;
 }
 
 interface Props {

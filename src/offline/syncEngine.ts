@@ -14,7 +14,8 @@ let isSyncingProcess = false;
 
 export async function syncAllPending(
   token: string,
-  orgId?: string,
+  orgId: string,
+  userId: string,
 ): Promise<{ sincronizados: number; rechazados: number; total: number }> {
   if (isSyncingProcess) {
     return { sincronizados: 0, rechazados: 0, total: 0 };
@@ -22,58 +23,56 @@ export async function syncAllPending(
 
   isSyncingProcess = true;
   try {
-    const pendings = await getPendingMovements(orgId);
+    const pendings = await getPendingMovements(orgId, userId);
     if (pendings.length === 0) {
       return { sincronizados: 0, rechazados: 0, total: 0 };
     }
 
-    // Convertir al contrato del backend SyncMovimientoItem
-    const payloadItems: SyncMovimientoItem[] = pendings.map((p) => ({
-      uuid_local: p.uuid_local,
-      id_tipo_movimiento: p.id_tipo_movimiento,
-      id_item: p.id_item,
-      id_lote: p.id_lote,
-      id_ubicacion_origen: p.id_ubicacion_origen,
-      id_ubicacion_destino: p.id_ubicacion_destino,
-      cantidad: p.cantidad,
-      unidad_medida: p.unidad_medida,
-      fecha_hora_local: p.fecha_hora_local,
-      observaciones: p.observaciones,
-      atributos: p.atributos,
-    }));
-
-    // Marcar como 'syncing'
-    await Promise.all(
-      pendings.map((p) => db.pendingMovements.update(p.uuid_local, { status: "syncing" })),
-    );
-
-    const response = await syncOfflineMovements(token, payloadItems);
-
-    for (const res of response.resultados) {
-      if (res.estado === "sincronizado" || res.estado === "duplicado") {
-        await updateMovementStatus(res.uuid_local, "synced", null, res.id_movimiento);
+    const totals = { sincronizados: 0, rechazados: 0, total: 0 };
+    for (let start = 0; start < pendings.length; start += 100) {
+      const batch = pendings.slice(start, start + 100);
+      const payloadItems: SyncMovimientoItem[] = batch.map((movement) => ({
+        uuid_local: movement.uuid_local,
+        id_tipo_movimiento: movement.id_tipo_movimiento,
+        id_item: movement.id_item,
+        id_lote: movement.id_lote,
+        id_ubicacion_origen: movement.id_ubicacion_origen,
+        id_ubicacion_destino: movement.id_ubicacion_destino,
+        cantidad: movement.cantidad,
+        unidad_medida: movement.unidad_medida,
+        fecha_hora_local: movement.fecha_hora_local,
+        observaciones: movement.observaciones,
+        atributos: movement.atributos,
+      }));
+      await Promise.all(batch.map((movement) => db.pendingMovements.update(movement.uuid_local, { status: "syncing" })));
+      let response;
+      try {
+        response = await syncOfflineMovements(token, payloadItems);
+      } catch (error) {
+        await Promise.all(batch.map((movement) => updateMovementStatus(movement.uuid_local, "pending")));
+        throw error;
+      }
+      for (const result of response.resultados) {
+        if (result.estado === "sincronizado" || result.estado === "duplicado" || result.estado === "pendiente") {
+          await updateMovementStatus(result.uuid_local, "synced", null, result.id_movimiento ?? result.id_solicitud);
+        } else {
+          await updateMovementStatus(result.uuid_local, "rejected", result.motivo);
+        }
         await db.syncLog.add({
-          uuid_local: res.uuid_local,
+          uuid_local: result.uuid_local,
           fecha_hora: new Date().toISOString(),
-          estado: res.estado,
-          mensaje: "Movimiento procesado correctamente en servidor",
-        });
-      } else {
-        await updateMovementStatus(res.uuid_local, "rejected", res.motivo);
-        await db.syncLog.add({
-          uuid_local: res.uuid_local,
-          fecha_hora: new Date().toISOString(),
-          estado: "rechazado",
-          mensaje: res.motivo,
+          estado: result.estado,
+          mensaje: result.motivo ?? "Movimiento recibido por el servidor",
         });
       }
+      const answered = new Set(response.resultados.map((result) => result.uuid_local));
+      await Promise.all(batch.filter((movement) => !answered.has(movement.uuid_local))
+        .map((movement) => updateMovementStatus(movement.uuid_local, "pending")));
+      totals.sincronizados += response.sincronizados + response.pendientes;
+      totals.rechazados += response.rechazados;
+      totals.total += response.total;
     }
-
-    return {
-      sincronizados: response.sincronizados,
-      rechazados: response.rechazados,
-      total: response.total,
-    };
+    return totals;
   } finally {
     isSyncingProcess = false;
   }

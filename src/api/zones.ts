@@ -1,33 +1,8 @@
-import { apiFetch } from "./client";
+import { apiFetch, apiFetchAllPages } from "./client";
 import { Zone, ZoneTreeNode } from "../domain/zone";
-import { PaginatedResponse } from "./sites";
-import type { ApiGalpon } from "@/lib/api";
 
 export async function fetchZonesBySite(token: string, siteId: string): Promise<Zone[]> {
-  try {
-    const res = await apiFetch<Zone[] | PaginatedResponse<Zone>>("/api/v2/zonas", {
-      token,
-      params: { id_sitio: siteId },
-    });
-    return Array.isArray(res) ? res : res.items;
-  } catch {
-    // Adaptador legacy /galpones
-    const legacy = await apiFetch<PaginatedResponse<ApiGalpon>>("/galpones", { token });
-    return legacy.items
-      .filter((g) => g.id_sede === siteId)
-      .map((g) => ({
-        id: g.id,
-        id_organizacion: "default",
-        id_sitio: g.id_sede,
-        codigo: g.codigo,
-        nombre: g.nombre,
-        tipo: "galpon",
-        layout: { filas: g.filas, columnas: g.columnas },
-        atributos: {},
-        activo: true,
-        fecha_creacion: new Date().toISOString(),
-      }));
-  }
+  return apiFetchAllPages<Zone>("/api/v2/zonas", token, { id_sitio: siteId });
 }
 
 export async function fetchZoneById(token: string, id: string): Promise<Zone> {

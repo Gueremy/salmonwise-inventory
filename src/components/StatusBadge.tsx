@@ -1,15 +1,15 @@
 import { EstadoContainer, estadoColor, estadoLabel } from "@/lib/inventory";
 
-export const StatusBadge = ({ estado }: { estado: EstadoContainer }) => (
+export const StatusBadge = ({ estado }: { estado?: string }) => (
   <span
     className="badge-status"
     style={{
-      backgroundColor: `${estadoColor[estado]}1F`,
-      color: estadoColor[estado],
+      backgroundColor: `${estadoColor[estado as EstadoContainer] ?? "#9CA3AF"}1F`,
+      color: estadoColor[estado as EstadoContainer] ?? "#9CA3AF",
     }}
   >
-    <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: estadoColor[estado] }} />
-    {estadoLabel[estado]}
+    <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: estadoColor[estado as EstadoContainer] ?? "#9CA3AF" }} />
+    {estadoLabel[estado as EstadoContainer] ?? estado ?? "Desconocido"}
   </span>
 );
 

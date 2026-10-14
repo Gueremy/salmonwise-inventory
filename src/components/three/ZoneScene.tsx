@@ -30,7 +30,7 @@ export interface SceneLocation {
   producto?: string;
   lote_principal?: string;
   lote?: string;
-  [key: string]: unknown;
+  atributos?: Record<string, unknown>;
 }
 
 interface Props {
@@ -85,7 +85,7 @@ const LocationBox = ({
     ? "white"
     : "#ffffff33";
 
-  const itemName = location.item_nombre ?? location.producto ?? location.atributos?.tipo_producto_permitido;
+  const itemName = location.item_nombre ?? location.producto ?? (location.atributos?.tipo_producto_permitido ? String(location.atributos.tipo_producto_permitido) : null);
   const lotName = location.lote_principal ?? location.lote;
 
   return (

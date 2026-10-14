@@ -1,7 +1,7 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis, Cell } from "recharts";
-import { Box, Bell, ArrowUpRight, Clock, XCircle } from "lucide-react";
+import { Box, Bell, Package, MapPin, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
@@ -59,14 +59,14 @@ function prettyType(tipo: ApiMovimientoListItem["tipo"]) {
 
 function alertColor(severidad: ApiAlerta["severidad"]) {
   if (severidad === "critica") return "bg-destructive";
-  if (severidad === "media") return "bg-status-medio";
+  if (severidad === "aviso") return "bg-status-medio";
   return "bg-secondary";
 }
 
 export default function Dashboard() {
-  const { accessToken, setOnline, usuario } = useRole();
+  const { accessToken, can } = useRole();
   const queryClient = useQueryClient();
-  const canReview = usuario.rol === "jefe_bodega" || usuario.rol === "super_admin";
+  const canReview = can("movimiento:approve");
   const [rejecting, setRejecting] = useState<ApiMovimientoListItem | null>(null);
   const [motivo, setMotivo] = useState("");
 
@@ -104,7 +104,7 @@ export default function Dashboard() {
     retry: false,
     queryFn: async () => {
       const params = new URLSearchParams({
-        estado: "pendiente",
+        pendientes: "true",
         limit: "20",
       });
       const response = await fetchMovimientos(accessToken!, params.toString());
@@ -147,29 +147,6 @@ export default function Dashboard() {
     },
   });
 
-  const hasLiveSuccess =
-    kpisQuery.isSuccess ||
-    galponesQuery.isSuccess ||
-    alertasQuery.isSuccess ||
-    (canReview && pendingQuery.isSuccess);
-
-  const hasLiveFailure =
-    kpisQuery.isError &&
-    galponesQuery.isError &&
-    alertasQuery.isError &&
-    (!canReview || pendingQuery.isError);
-
-  useEffect(() => {
-    if (hasLiveSuccess) {
-      setOnline(true);
-      return;
-    }
-
-    if (hasLiveFailure) {
-      setOnline(false);
-    }
-  }, [hasLiveFailure, hasLiveSuccess, setOnline]);
-
   const chartData = galponesQuery.data ?? [];
   const liveKpis = kpisQuery.data;
   const recentAlerts = (alertasQuery.data ?? []).slice(0, 4);
@@ -193,17 +170,17 @@ export default function Dashboard() {
           accent="bg-destructive/10 text-destructive"
         />
         <KpiCard
-          label="Movimientos Hoy"
-          value={liveKpis ? String(liveKpis.movimientos_hoy) : kpisQuery.isLoading ? "..." : "--"}
+          label="Ítems"
+          value={liveKpis ? String(liveKpis.total_items) : kpisQuery.isLoading ? "..." : "--"}
           sub={liveKpis ? "Dato live desde backend" : "Sin datos live disponibles"}
-          icon={ArrowUpRight}
+          icon={Package}
           accent="bg-status-disponible/10 text-status-disponible"
         />
         <KpiCard
-          label="Prox. Vencimiento"
-          value={liveKpis?.proximo_vencimiento != null ? `${liveKpis.proximo_vencimiento} dias` : kpisQuery.isLoading ? "..." : "--"}
+          label="Ubicaciones libres"
+          value={liveKpis ? String(liveKpis.ubicaciones_libres) : kpisQuery.isLoading ? "..." : "--"}
           sub={liveKpis ? "Dato live desde backend" : "Sin datos live disponibles"}
-          icon={Clock}
+          icon={MapPin}
           accent="bg-status-medio/10 text-status-medio"
         />
       </div>
@@ -212,7 +189,7 @@ export default function Dashboard() {
         <div className="xl:col-span-2 bg-card rounded-lg border border-border/60 p-5 shadow-sm">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h3 className="font-semibold">Ocupacion por galpon</h3>
+              <h3 className="font-semibold">Ocupación por ubicación</h3>
               <p className="text-xs text-muted-foreground">
                 {galponesQuery.data ? "Datos live del backend" : galponesQuery.isError ? "No se pudo cargar la API" : "Cargando datos live"}
               </p>

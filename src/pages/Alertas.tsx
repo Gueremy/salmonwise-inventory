@@ -8,8 +8,8 @@ import { ApiAlerta, fetchAlertasActivas } from "@/lib/api";
 
 const severityConfig = {
   critica: { titulo: "Criticas", bg: "bg-destructive/5 border-destructive/30", text: "text-destructive", icon: AlertCircle },
-  media: { titulo: "Avisos", bg: "bg-status-medio/5 border-status-medio/30", text: "text-status-medio", icon: AlertTriangle },
-  baja: { titulo: "Informativas", bg: "bg-secondary/5 border-secondary/30", text: "text-secondary", icon: Info },
+  aviso: { titulo: "Avisos", bg: "bg-status-medio/5 border-status-medio/30", text: "text-status-medio", icon: AlertTriangle },
+  informativa: { titulo: "Informativas", bg: "bg-secondary/5 border-secondary/30", text: "text-secondary", icon: Info },
 } as const;
 
 const fallbackConfig = { titulo: "Otras", bg: "bg-muted/40 border-border", text: "text-muted-foreground", icon: Info };
@@ -36,13 +36,13 @@ export default function Alertas() {
     queryFn: () => fetchAlertasActivas(accessToken!),
   });
   const grupos = useMemo(() => groupAlertas(alertasQuery.data ?? []), [alertasQuery.data]);
-  const orderedKeys = ["critica", "media", "baja", ...Object.keys(grupos).filter((key) => !["critica", "media", "baja"].includes(key))];
+  const orderedKeys = ["critica", "aviso", "informativa", ...Object.keys(grupos).filter((key) => !["critica", "aviso", "informativa"].includes(key))];
 
   return (
     <div className="p-6 space-y-5 animate-fade-in">
       <div>
         <h2 className="text-xl font-bold">Alertas activas</h2>
-        <p className="text-sm text-muted-foreground">Datos live desde GET /alertas/activas.</p>
+        <p className="text-sm text-muted-foreground">Alertas de tu organización desde el backend v2.</p>
       </div>
 
       {alertasQuery.isLoading && <div className="text-sm text-muted-foreground">Cargando alertas...</div>}
@@ -77,7 +77,7 @@ export default function Alertas() {
                   <div className="text-sm">
                     <div className="font-medium">{alerta.descripcion}</div>
                     <div className="text-xs text-muted-foreground mt-0.5">
-                      {alerta.tipo} · container {alerta.id_container} · {formatDate(alerta.fecha_generacion)}
+                      {alerta.tipo} · ubicación {alerta.id_container || "sin ubicación"} · {formatDate(alerta.fecha_generacion)}
                     </div>
                   </div>
                   <Button asChild variant="outline" size="sm" className="shrink-0">

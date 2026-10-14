@@ -8,6 +8,7 @@ import { MovStatusBadge } from "@/components/StatusBadge";
 import { useRole } from "@/context/RoleContext";
 import { approveMovimiento, fetchMovimientos, rejectMovimiento } from "@/lib/api";
 import { toast } from "sonner";
+import { downloadReport } from "@/api/reports";
 
 const prettyType: Record<string, string> = {
   entrada_proveedor: "Entrada proveedor",
@@ -27,11 +28,30 @@ function formatDate(dateValue: string) {
 }
 
 export default function Movimientos() {
-  const { accessToken, usuario } = useRole();
+  const { accessToken, can } = useRole();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [motivoRechazo, setMotivoRechazo] = useState("");
+  const [downloading, setDownloading] = useState(false);
+
+  const exportMovements = async (kind: "pdf" | "excel") => {
+    if (!accessToken) return;
+    setDownloading(true);
+    try {
+      const result = await downloadReport(accessToken, kind);
+      const url = URL.createObjectURL(result.blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = result.filename;
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch (cause) {
+      toast.error(cause instanceof Error ? cause.message : "No se pudo exportar el reporte");
+    } finally {
+      setDownloading(false);
+    }
+  };
 
   const movimientosQuery = useQuery({
     queryKey: ["movimientos", accessToken, search],
@@ -53,7 +73,7 @@ export default function Movimientos() {
     [movimientosQuery.data, selectedId],
   );
 
-  const canReview = usuario.rol === "jefe_bodega" || usuario.rol === "super_admin";
+  const canReview = can("movimiento:approve");
 
   const approveMutation = useMutation({
     mutationFn: ({ token, id }: { token: string; id: string }) => approveMovimiento(token, id),
@@ -105,8 +125,8 @@ export default function Movimientos() {
               onChange={(event) => setSearch(event.target.value)}
             />
           </div>
-          <Button variant="outline" size="sm" disabled><FileText className="h-4 w-4 mr-1.5" />PDF</Button>
-          <Button variant="outline" size="sm" disabled><FileSpreadsheet className="h-4 w-4 mr-1.5" />Excel</Button>
+          <Button variant="outline" size="sm" disabled={downloading} onClick={() => void exportMovements("pdf")}><FileText className="h-4 w-4 mr-1.5" />PDF</Button>
+          <Button variant="outline" size="sm" disabled={downloading} onClick={() => void exportMovements("excel")}><FileSpreadsheet className="h-4 w-4 mr-1.5" />Excel</Button>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">

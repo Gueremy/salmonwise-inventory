@@ -14,7 +14,6 @@ export interface SceneZone {
   ocupacion_promedio?: number;
   containers?: number;
   total_ubicaciones?: number;
-  [key: string]: unknown;
 }
 
 interface Props {

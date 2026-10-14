@@ -47,8 +47,9 @@ export default function Operario() {
     const matched = allContainers.find((c) => c.codigo.toLowerCase() === code.toLowerCase());
     if (matched) {
       toast.success(`Ubicación encontrada: ${matched.codigo}`);
+      navigate(`/zones/${matched.galponId}?focus=${matched.id}`);
     } else {
-      toast.info(`Búsqueda aplicada para código: ${code}`);
+      toast.error(`No se encontró un recurso con el código ${code}`);
     }
   };
 

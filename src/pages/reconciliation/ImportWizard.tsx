@@ -1,21 +1,16 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { UploadCloud, FileSpreadsheet, ArrowRight, CheckCircle2, AlertCircle } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { useRole } from "@/context/RoleContext";
-import { useSitesQuery } from "@/hooks/use-spatial-inventory";
 import { uploadReconciliationFile } from "@/api/reconciliation";
 import { toast } from "sonner";
 
 export default function ImportWizard() {
   const { accessToken } = useRole();
   const navigate = useNavigate();
-  const sitesQuery = useSitesQuery();
-
-  const [selectedSiteId, setSelectedSiteId] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [previewRows, setPreviewRows] = useState<Array<Record<string, string>>>([]);
   const [columns, setColumns] = useState<string[]>([]);
@@ -24,6 +19,8 @@ export default function ImportWizard() {
     item: "",
     cantidad: "",
     lote: "",
+    sitio: "",
+    zona: "",
   });
   const [processing, setProcessing] = useState(false);
 
@@ -31,6 +28,9 @@ export default function ImportWizard() {
     const selected = e.target.files?.[0];
     if (!selected) return;
     setFile(selected);
+    setPreviewRows([]);
+    setColumns([]);
+    if (!selected.name.toLowerCase().endsWith(".csv")) return;
 
     // Leer encabezados y primeras 3 filas para previsualización simple
     const reader = new FileReader();
@@ -60,6 +60,8 @@ export default function ImportWizard() {
           item: headerCols.find((c) => /prod|item|art|sku|desc/i.test(c)) ?? headerCols[1] ?? "",
           cantidad: headerCols.find((c) => /cant|stock|qty|saldo/i.test(c)) ?? headerCols[2] ?? "",
           lote: headerCols.find((c) => /lote|batch/i.test(c)) ?? headerCols[3] ?? "",
+          sitio: headerCols.find((c) => /sitio|sede/i.test(c)) ?? "",
+          zona: headerCols.find((c) => /zona|galpon/i.test(c)) ?? "",
         });
       }
     };
@@ -68,11 +70,22 @@ export default function ImportWizard() {
 
   const handleProcess = async () => {
     if (!file || !accessToken) return;
+    if (columns.length > 0 && (!mapping.ubicacion || !mapping.item || !mapping.cantidad)) {
+      toast.error("Selecciona las columnas de ubicación, ítem y cantidad.");
+      return;
+    }
     setProcessing(true);
     try {
-      await uploadReconciliationFile(accessToken, file, selectedSiteId || undefined);
+      const result = await uploadReconciliationFile(accessToken, file, columns.length > 0 ? {
+        codigo_ubicacion: mapping.ubicacion,
+        codigo_item: mapping.item,
+        cantidad: mapping.cantidad,
+        ...(mapping.lote ? { numero_lote: mapping.lote } : {}),
+        ...(mapping.sitio ? { codigo_sitio: mapping.sitio } : {}),
+        ...(mapping.zona ? { codigo_zona: mapping.zona } : {}),
+      } : undefined);
       toast.success("Archivo importado y conciliado con éxito");
-      navigate("/reconciliation");
+      navigate(`/reconciliation?job=${result.job.id}`);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Error durante la importación");
     } finally {
@@ -97,33 +110,21 @@ export default function ImportWizard() {
       </div>
 
       <div className="bg-card border border-border rounded-lg p-6 space-y-5 shadow-sm">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label>Sitio de destino</Label>
-            <Select value={selectedSiteId} onValueChange={setSelectedSiteId}>
-              <SelectTrigger>
-                <SelectValue placeholder="Selecciona un sitio (opcional)" />
-              </SelectTrigger>
-              <SelectContent>
-                {sitesQuery.data?.map((site) => (
-                  <SelectItem key={site.id} value={site.id}>
-                    {site.nombre} ({site.codigo})
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
+        <div className="grid grid-cols-1 gap-4">
           <div className="space-y-2">
             <Label>Archivo de inventario (CSV o Excel)</Label>
             <input
               type="file"
-              accept=".csv,.xlsx,.xls,.txt"
+              accept=".csv,.xlsx"
               onChange={handleFileChange}
               className="block w-full text-xs text-muted-foreground file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-primary file:text-primary-foreground hover:file:bg-primary/90 cursor-pointer"
             />
           </div>
         </div>
+
+        {file?.name.toLowerCase().endsWith(".xlsx") && (
+          <p className="text-xs text-muted-foreground">Excel se procesa con los encabezados estándar SITIO, ZONA, POSICION, SKU, LOTE y CANTIDAD.</p>
+        )}
 
         {columns.length > 0 && (
           <div className="space-y-4 pt-4 border-t border-border">
@@ -181,6 +182,18 @@ export default function ImportWizard() {
                   ))}
                 </select>
               </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+              {([ ["sitio", "Sitio (si el código de ubicación se repite)"], ["zona", "Zona (opcional)"] ] as const).map(([key, label]) => (
+                <div key={key} className="space-y-1.5">
+                  <Label className="text-xs">{label}</Label>
+                  <select value={mapping[key]} onChange={(event) => setMapping((current) => ({ ...current, [key]: event.target.value }))} className="w-full h-9 rounded-md border border-input bg-background px-2 text-xs">
+                    <option value="">(Ninguno)</option>
+                    {columns.map((column) => <option key={column} value={column}>{column}</option>)}
+                  </select>
+                </div>
+              ))}
             </div>
 
             {/* Previsualización tabular */}

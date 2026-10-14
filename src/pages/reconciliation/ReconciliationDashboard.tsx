@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import {
   Layers,
   AlertTriangle,
@@ -16,13 +16,16 @@ import {
 import { Button } from "@/components/ui/button";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { useRole } from "@/context/RoleContext";
-import { fetchInconsistencies, fetchSupervisorKpis, InconsistencyItem } from "@/api/reconciliation";
+import { fetchInconsistencies, fetchJobInconsistencies, fetchSupervisorKpis, InconsistencyItem } from "@/api/reconciliation";
+import { fetchLocationById } from "@/api/locations";
 import { downloadReport, ReportDownloadResult } from "@/api/reports";
 import { toast } from "sonner";
 
 export default function ReconciliationDashboard() {
   const { accessToken } = useRole();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const jobId = searchParams.get("job");
 
   const [filterType, setFilterType] = useState<string>("todos");
   const [lastReport, setLastReport] = useState<ReportDownloadResult | null>(null);
@@ -35,9 +38,9 @@ export default function ReconciliationDashboard() {
   });
 
   const inconsistenciesQuery = useQuery({
-    queryKey: ["inconsistencies", accessToken],
+    queryKey: ["inconsistencies", accessToken, jobId],
     enabled: Boolean(accessToken),
-    queryFn: () => fetchInconsistencies(accessToken!),
+    queryFn: () => jobId ? fetchJobInconsistencies(accessToken!, jobId) : fetchInconsistencies(accessToken!),
   });
 
   const kpis = kpisQuery.data ?? {
@@ -46,18 +49,36 @@ export default function ReconciliationDashboard() {
     ubicaciones_libres: 0,
     porcentaje_uso: 0,
     total_inconsistencias: 0,
+    capacidad_por_unidad: {},
+    stock_por_unidad: {},
+    totales_comparables: true,
   };
 
   const items = inconsistenciesQuery.data ?? [];
   const filteredItems = filterType === "todos"
     ? items
     : items.filter((item) => item.tipo === filterType || item.severidad === filterType);
+  const formatTotals = (totals: Record<string, number>, scalar: number) => {
+    const entries = Object.entries(totals);
+    if (entries.length === 0) return scalar.toLocaleString("es-CL");
+    return entries.map(([unit, value]) => `${Number(value).toLocaleString("es-CL")} ${unit}`).join(" · ");
+  };
+
+  const openInconsistency = async (item: InconsistencyItem) => {
+    if (!accessToken || !item.id_ubicacion) return;
+    try {
+      const location = await fetchLocationById(accessToken, item.id_ubicacion);
+      navigate(`/zones/${location.id_zona}?focus=${location.id}`);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "No se pudo abrir la ubicación");
+    }
+  };
 
   const handleDownload = async (kind: "pdf" | "excel") => {
     if (!accessToken) return;
     setDownloading(kind);
     try {
-      const result = await downloadReport(accessToken, kind);
+      const result = await downloadReport(accessToken, kind, "", "inconsistencias");
       const url = URL.createObjectURL(result.blob);
       const link = document.createElement("a");
       link.href = url;
@@ -115,13 +136,13 @@ export default function ReconciliationDashboard() {
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         <div className="bg-card border border-border rounded-lg p-4">
           <div className="text-xs uppercase text-muted-foreground font-medium">Capacidad Instalada</div>
-          <div className="text-2xl font-bold mt-1">{kpis.capacidad_instalada.toLocaleString("es-CL")} kg</div>
+          <div className="text-2xl font-bold mt-1">{formatTotals(kpis.capacidad_por_unidad, kpis.capacidad_instalada)}</div>
           <div className="text-[11px] text-muted-foreground mt-1">Volumen total</div>
         </div>
 
         <div className="bg-card border border-border rounded-lg p-4">
           <div className="text-xs uppercase text-muted-foreground font-medium">Stock Actual</div>
-          <div className="text-2xl font-bold mt-1 text-primary">{kpis.stock_actual.toLocaleString("es-CL")} kg</div>
+          <div className="text-2xl font-bold mt-1 text-primary">{formatTotals(kpis.stock_por_unidad, kpis.stock_actual)}</div>
           <div className="text-[11px] text-muted-foreground mt-1">Existencias físicas</div>
         </div>
 
@@ -152,6 +173,11 @@ export default function ReconciliationDashboard() {
       </div>
 
       {/* Lista de Inconsistencias con navegación hacia 2D/3D */}
+      {(kpisQuery.isError || inconsistenciesQuery.isError) && (
+        <div role="alert" className="rounded-md border border-destructive/40 p-3 text-sm text-destructive">
+          No se pudieron cargar los datos de conciliación. Revisa tu conexión o permisos.
+        </div>
+      )}
       <div className="bg-card border border-border rounded-lg p-5 space-y-4 shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-border">
           <div className="flex items-center gap-2">
@@ -213,13 +239,7 @@ export default function ReconciliationDashboard() {
                   size="sm"
                   variant="outline"
                   className="text-xs h-8"
-                  onClick={() => {
-                    if (inc.id_zona) {
-                      navigate(`/zones/${inc.id_zona}?focus=${inc.id_ubicacion}`);
-                    } else {
-                      navigate(`/sites`);
-                    }
-                  }}
+                  onClick={() => void openInconsistency(inc)}
                 >
                   <Eye className="h-3.5 w-3.5 mr-1 text-primary" />
                   Ver en 3D / 2D
@@ -228,7 +248,7 @@ export default function ReconciliationDashboard() {
             </div>
           ))}
 
-          {filteredItems.length === 0 && (
+          {filteredItems.length === 0 && !inconsistenciesQuery.isError && (
             <div className="p-8 text-center text-sm text-muted-foreground border border-dashed border-border rounded-lg">
               <CheckCircle2 className="h-8 w-8 mx-auto mb-2 text-status-disponible opacity-80" />
               No se detectaron inconsistencias para el filtro seleccionado.

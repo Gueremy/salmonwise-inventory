@@ -6,6 +6,7 @@ import { Item } from "@/domain/item";
 import { Lot } from "@/domain/lot";
 import { LocationRule } from "@/domain/rules";
 import { Organization } from "@/domain/organization";
+import { MovementTypeConfig } from "@/domain/movement";
 
 export interface LocalMovementRecord {
   uuid_local: string;
@@ -46,6 +47,7 @@ export class SalmoTrackDB extends Dexie {
   rules!: Table<LocationRule, string>;
   pendingMovements!: Table<LocalMovementRecord, string>;
   syncLog!: Table<SyncLogRecord, number>;
+  movementTypes!: Table<MovementTypeConfig, string>;
 
   constructor() {
     super("SalmoTrackDB");
@@ -61,6 +63,7 @@ export class SalmoTrackDB extends Dexie {
       pendingMovements: "uuid_local, organization_id, status, created_at",
       syncLog: "++id, uuid_local, fecha_hora, estado",
     });
+    this.version(2).stores({ movementTypes: "id, id_organizacion, codigo" });
   }
 }
 

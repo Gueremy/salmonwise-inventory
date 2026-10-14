@@ -5,13 +5,15 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useRole, Usuario } from "@/context/RoleContext";
-import { fetchHealth, fetchMe, login } from "@/lib/api";
+import { fetchHealth, login } from "@/lib/api";
+import { fetchSession } from "@/api/auth";
+import { DEFAULT_THEME } from "@/domain/organization";
 
 const sedeLabel = (idSede: string | null) => idSede ?? "Global";
 
 export default function Login() {
   const navigate = useNavigate();
-  const { setUsuario, setAuthenticated, setAccessToken, authenticated, setOnline } = useRole();
+  const { setUsuario, setOrganizacion, setModulosActivos, setAuthenticated, setAccessToken, authenticated, setOnline } = useRole();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -46,17 +48,45 @@ export default function Login() {
 
     try {
       const tokens = await login(email, password);
-      const me = await fetchMe(tokens.access_token);
+      const session = await fetchSession(tokens.access_token);
+      const operational = session.configuracion_operativa;
       const usuario: Usuario = {
-        id: me.id,
-        nombre: me.nombre,
-        rol: me.rol,
-        sede: sedeLabel(me.id_sede),
-        id_organizacion: me.id_organizacion ?? "default",
-        permisos: me.permisos,
+        id: session.usuario.id,
+        nombre: session.usuario.nombre,
+        rol: session.usuario.rol,
+        sede: sedeLabel(session.usuario.id_sede),
+        id_organizacion: session.organizacion.id,
+        organizacion_nombre: session.organizacion.nombre,
+        permisos: session.permisos,
+        modulos_activos: session.modulos_activos,
       };
 
       setUsuario(usuario);
+      setOrganizacion({
+        id: session.organizacion.id,
+        codigo: session.organizacion.slug,
+        nombre: session.organizacion.nombre,
+        configuracion: {
+          umbrales: {
+            disponible_max: operational.umbrales_color.alerta - 0.0001,
+            medio_max: operational.umbrales_color.critica - 0.0001,
+            critico_min: operational.umbrales_color.critica,
+          },
+          colores: {
+            color_disponible: operational.paleta_colores.optima ?? DEFAULT_THEME.color_disponible,
+            color_medio: operational.paleta_colores.alerta ?? DEFAULT_THEME.color_medio,
+            color_critico: operational.paleta_colores.critica ?? DEFAULT_THEME.color_critico,
+            color_mantenimiento: operational.paleta_colores.libre ?? DEFAULT_THEME.color_mantenimiento,
+            color_cuarentena: operational.paleta_colores.retenido ?? DEFAULT_THEME.color_cuarentena,
+          },
+          unidades_permitidas: Object.keys(operational.unidades),
+          estrategia_picking_default: "FEFO",
+        },
+        atributos: {},
+        activo: true,
+        fecha_creacion: new Date().toISOString(),
+      });
+      setModulosActivos(session.modulos_activos);
       setAccessToken(tokens.access_token);
       setAuthenticated(true);
       setOnline(true);

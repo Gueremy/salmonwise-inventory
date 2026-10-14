@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useState, ReactNode, useMemo } from "react";
 import { Organization, DEFAULT_THRESHOLDS, DEFAULT_THEME } from "../domain/organization";
 
-export type Rol = "jefe_bodega" | "admin_sede" | "operario" | "gerencia" | "super_admin";
+export type Rol = string;
 
 export interface Usuario {
   id: string;
@@ -169,7 +169,7 @@ export const RoleProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const userPermissions = useMemo(() => {
-    if (usuario.permisos && usuario.permisos.length > 0) {
+    if (usuario.permisos) {
       return new Set(usuario.permisos);
     }
     return new Set(DEFAULT_ROLE_PERMISSIONS[usuario.rol] ?? []);

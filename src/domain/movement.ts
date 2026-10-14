@@ -1,7 +1,9 @@
 export interface MovementTypeConfig {
   id: string;
+  id_organizacion: string;
   codigo: string;
   nombre: string;
+  efecto_stock: "entrada" | "salida" | "traslado" | "sin_efecto";
   requiere_origen: boolean;
   requiere_destino: boolean;
   requiere_aprobacion: boolean;

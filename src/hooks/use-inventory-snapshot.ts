@@ -6,27 +6,63 @@ import { fetchLocationsByZone } from "@/api/locations";
 import { fetchActiveAlerts } from "@/api/alerts";
 import { buildInventorySnapshot } from "@/lib/inventory";
 import type { ApiSede, ApiContainer } from "@/lib/api";
+import { getCachedSites, getCachedZones, getCachedLocations, saveCatalogToCache } from "@/offline/catalogCache";
 
 export function useInventorySnapshot() {
-  const { accessToken } = useRole();
+  const { accessToken, organizacion } = useRole();
 
   const query = useQuery({
-    queryKey: ["inventory-snapshot", accessToken],
+    queryKey: ["inventory-snapshot", accessToken, organizacion.id],
     enabled: Boolean(accessToken),
     retry: 1,
     queryFn: async () => {
       // 1. Obtener sitios activos
-      const sites = await fetchSites(accessToken!);
+      const sites = await (async () => {
+        if (navigator.onLine) {
+          try {
+            const fresh = await fetchSites(accessToken!);
+            await saveCatalogToCache({ sites: fresh });
+            return fresh;
+          } catch (cause) {
+            if (!(cause instanceof TypeError)) throw cause;
+          }
+        }
+        const cached = await getCachedSites(organizacion.id);
+        if (!cached.length) throw new Error("No hay sitios guardados para uso sin conexión.");
+        return cached;
+      })();
 
       // 2. Obtener zonas para cada sitio
       const zonesArrays = await Promise.all(
-        sites.map((site) => fetchZonesBySite(accessToken!, site.id).catch(() => [])),
+        sites.map(async (site) => {
+          if (navigator.onLine) {
+            try {
+              const fresh = await fetchZonesBySite(accessToken!, site.id);
+              await saveCatalogToCache({ zones: fresh });
+              return fresh;
+            } catch (cause) {
+              if (!(cause instanceof TypeError)) throw cause;
+            }
+          }
+          return getCachedZones(site.id);
+        }),
       );
       const allZones = zonesArrays.flat();
 
       // 3. Obtener ubicaciones para cada zona
       const locationsArrays = await Promise.all(
-        allZones.map((zone) => fetchLocationsByZone(accessToken!, zone.id).catch(() => [])),
+        allZones.map(async (zone) => {
+          if (navigator.onLine) {
+            try {
+              const fresh = await fetchLocationsByZone(accessToken!, zone.id);
+              await saveCatalogToCache({ locations: fresh });
+              return fresh;
+            } catch (cause) {
+              if (!(cause instanceof TypeError)) throw cause;
+            }
+          }
+          return getCachedLocations(zone.id);
+        }),
       );
       const allLocations = locationsArrays.flat();
 

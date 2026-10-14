@@ -25,8 +25,8 @@ export interface DrawerLocation {
   temperatura?: number | null;
   fecha_vencimiento?: string | null;
   fechaVencimiento?: string | null;
+  vencimiento?: string | null;
   atributos?: Record<string, unknown>;
-  [key: string]: unknown;
 }
 
 interface Props {
@@ -67,7 +67,7 @@ export const LocationDetailDrawer = ({ location, onClose, zoneName, onRefresh }:
   const capMax = Number(location.capacidad_maxima ?? location.capacidadMax ?? 0);
   const ocupActual = Number(location.ocupacion_actual ?? location.ocupacionActual ?? 0);
   const unidad = location.unidad_capacidad ?? location.unidadMedida ?? "unidades";
-  const itemName = location.item_nombre ?? location.producto ?? location.atributos?.tipo_producto_permitido;
+  const itemName = location.item_nombre ?? location.producto ?? (location.atributos?.tipo_producto_permitido ? String(location.atributos.tipo_producto_permitido) : null);
   const lotName = location.lote_principal ?? location.lote;
 
   return (

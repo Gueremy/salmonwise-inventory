@@ -1,3 +1,6 @@
+import { approveMovement, fetchMovementRequests, rejectMovement } from "@/api/movements";
+import { apiFetch } from "@/api/client";
+
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000";
 
 export interface AuthTokens {
@@ -31,8 +34,8 @@ export interface UpdateUsuarioPayload {
 export interface DashboardKpis {
   ocupacion_global: number;
   alertas_activas: number;
-  movimientos_hoy: number;
-  proximo_vencimiento: number | null;
+  total_items: number;
+  ubicaciones_libres: number;
 }
 
 export interface DashboardGalpon {
@@ -112,7 +115,7 @@ export interface ApiMovimientoListItem {
   id_producto: string;
   id_usuario: string;
   id_usuario_aprobador: string | null;
-  tipo: "entrada_proveedor" | "salida_produccion" | "traslado_interno" | "correccion";
+  tipo: string;
   estado: "pendiente" | "aprobado" | "rechazado";
   cantidad: string;
   numero_lote: string;
@@ -265,23 +268,27 @@ export async function asignarGalponesUsuario(accessToken: string, id: string, ga
 }
 
 export async function fetchDashboardKpis(accessToken: string) {
-  const response = await fetch(`${API_BASE_URL}/dashboard/kpis`, {
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-    },
-  });
-
-  return parseJson<DashboardKpis>(response);
+  const data = await apiFetch<{
+    porcentaje_uso: number; alertas_activas: number; total_items: number; ubicaciones_libres: number;
+  }>("/api/v2/dashboard/kpis", { token: accessToken });
+  return {
+    ocupacion_global: data.porcentaje_uso,
+    alertas_activas: data.alertas_activas,
+    total_items: data.total_items,
+    ubicaciones_libres: data.ubicaciones_libres,
+  } satisfies DashboardKpis;
 }
 
 export async function fetchDashboardGalpones(accessToken: string) {
-  const response = await fetch(`${API_BASE_URL}/dashboard/ocupacion-por-galpon`, {
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-    },
-  });
-
-  return parseJson<DashboardGalpon[]>(response);
+  const data = await apiFetch<Array<{ codigo: string; porcentaje_ocupacion: number }>>(
+    "/api/v2/dashboard/ocupacion", { token: accessToken },
+  );
+  return data.map((location) => ({
+    name: location.codigo,
+    ocupacion_pct: location.porcentaje_ocupacion,
+    ocup: location.porcentaje_ocupacion,
+    estado: location.porcentaje_ocupacion >= 80 ? "critico" : location.porcentaje_ocupacion >= 40 ? "medio" : "disponible",
+  })) satisfies DashboardGalpon[];
 }
 
 export async function fetchSedes(accessToken: string) {
@@ -315,13 +322,12 @@ export async function fetchContainers(accessToken: string) {
 }
 
 export async function fetchAlertasActivas(accessToken: string) {
-  const response = await fetch(`${API_BASE_URL}/alertas/activas`, {
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-    },
-  });
-
-  return parseJson<ApiAlerta[]>(response);
+  const data = await apiFetch<Array<{
+    id: string; id_ubicacion: string | null; id_usuario_revision: string | null;
+    tipo: string; severidad: string; descripcion: string; estado: string;
+    fecha_generacion: string | null; fecha_revision: string | null;
+  }>>("/api/v2/alertas/activas", { token: accessToken });
+  return data.map((alert) => ({ ...alert, id_container: alert.id_ubicacion ?? "" })) satisfies ApiAlerta[];
 }
 
 function filenameFromDisposition(disposition: string | null, fallback: string) {
@@ -374,14 +380,49 @@ export async function fetchProductos(accessToken: string) {
 }
 
 export async function fetchMovimientos(accessToken: string, query = "") {
-  const suffix = query ? `?${query}` : "";
-  const response = await fetch(`${API_BASE_URL}/movimientos/${suffix}`, {
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-    },
-  });
-
-  return parseJson<PaginatedResponse<ApiMovimientoListItem>>(response);
+  const params = new URLSearchParams(query);
+  const size = Math.min(Number(params.get("limit") || params.get("size") || 100), 100);
+  const page = Number(params.get("page") || 1);
+  const estado = params.get("estado");
+  const pendientes = params.get("pendientes");
+  const requestParams = new URLSearchParams({ page: String(page), size: String(size) });
+  if (estado) requestParams.set("estado", estado);
+  if (pendientes) requestParams.set("pendientes", pendientes);
+  const result = await fetchMovementRequests(accessToken, requestParams.toString());
+  const items: ApiMovimientoListItem[] = result.items.map((request) => ({
+    id: request.id,
+    id_container: request.id_ubicacion_origen ?? request.id_ubicacion_destino ?? "",
+    id_container_destino: request.id_ubicacion_destino ?? null,
+    id_producto: request.id_item,
+    id_usuario: request.id_usuario_solicitante,
+    id_usuario_aprobador: request.id_usuario_aprobador,
+    tipo: request.id_tipo_movimiento,
+    estado: request.fecha_resolucion
+      ? request.motivo_rechazo ? "rechazado" : "aprobado"
+      : "pendiente",
+    cantidad: String(request.cantidad),
+    numero_lote: request.id_lote ?? "—",
+    fecha_hora: request.fecha_creacion,
+    fecha_aprobacion: request.fecha_resolucion,
+    fecha_vencimiento: null,
+    nombre_proveedor: null,
+    num_guia_despacho: null,
+    registro_sanitario: null,
+    temperatura_almacen: null,
+    motivo_rechazo: request.motivo_rechazo,
+    observaciones: request.observaciones ?? null,
+    origen: "v2",
+    producto_nombre: request.id_item,
+    container_codigo: request.id_ubicacion_origen ?? request.id_ubicacion_destino ?? "—",
+    container_destino_codigo: request.id_ubicacion_destino ?? null,
+    operario_nombre: request.id_usuario_solicitante,
+    aprobador_nombre: request.id_usuario_aprobador,
+    galpon_codigo: "",
+  }));
+  const search = params.get("q")?.toLowerCase();
+  const filtered = search ? items.filter((item) => [item.producto_nombre, item.numero_lote, item.container_codigo, item.operario_nombre]
+    .some((value) => value.toLowerCase().includes(search))) : items;
+  return { ...result, items: filtered, total: search ? filtered.length : result.total };
 }
 
 export async function createMovimiento(accessToken: string, payload: MovimientoPayload) {
@@ -398,25 +439,9 @@ export async function createMovimiento(accessToken: string, payload: MovimientoP
 }
 
 export async function approveMovimiento(accessToken: string, id: string) {
-  const response = await fetch(`${API_BASE_URL}/movimientos/${id}/aprobar`, {
-    method: "PATCH",
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-    },
-  });
-
-  return parseJson<ApiMovimientoRead>(response);
+  return approveMovement(accessToken, id);
 }
 
 export async function rejectMovimiento(accessToken: string, id: string, motivo_rechazo: string) {
-  const response = await fetch(`${API_BASE_URL}/movimientos/${id}/rechazar`, {
-    method: "PATCH",
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ motivo_rechazo }),
-  });
-
-  return parseJson<ApiMovimientoRead>(response);
+  return rejectMovement(accessToken, id, motivo_rechazo);
 }

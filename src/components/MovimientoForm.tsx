@@ -1,419 +1,297 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowDownToLine, ArrowUpFromLine, RefreshCw } from "lucide-react";
-import type { InventoryContainerView } from "@/lib/inventory";
 import { useRole } from "@/context/RoleContext";
-import { createMovimiento, fetchProductos, type CreateMovimientoPayload } from "@/lib/api";
-import { fetchMovementTypes } from "@/api/movements";
-import { SernapescaFields, SagFields } from "@/modules/pack-salmonero";
+import { fetchItems, fetchLotsByItem } from "@/api/items";
+import { createMovement, fetchMovementTypes } from "@/api/movements";
+import type { CreateMovementPayload, MovementTypeConfig } from "@/domain/movement";
 import { toast } from "sonner";
+import { db } from "@/offline/db";
+import { queueLocalMovement } from "@/offline/movementQueue";
 
-export interface MovimientoContainerOption {
-  id: string;
-  codigo: string;
-  capacidadMax?: number;
-  capacidad_maxima?: number;
-  ocupacionActual?: number;
-  ocupacion_actual?: number;
-  producto?: string | null;
-  lote?: string | null;
-  tipoProductoPermitido?: string;
-  [key: string]: unknown;
+interface LocationOption {
+  id?: string;
+  codigo?: string;
 }
 
 interface Props {
   open: boolean;
-  onOpenChange: (b: boolean) => void;
-  container?: InventoryContainerView | MovimientoContainerOption;
-  availableContainers?: (InventoryContainerView | MovimientoContainerOption)[];
+  onOpenChange: (open: boolean) => void;
+  container?: LocationOption;
+  availableContainers?: LocationOption[];
   initialTipo?: string;
 }
 
-const defaultTypeIcons: Record<string, typeof ArrowDownToLine> = {
-  entrada_proveedor: ArrowDownToLine,
-  salida_produccion: ArrowUpFromLine,
-  traslado_interno: RefreshCw,
+const preferredEffect: Record<string, MovementTypeConfig["efecto_stock"]> = {
+  entrada_proveedor: "entrada",
+  salida_produccion: "salida",
+  traslado_interno: "traslado",
 };
 
-function formatDateInput(offsetDays = 0) {
-  const date = new Date();
-  date.setDate(date.getDate() + offsetDays);
-  return date.toISOString().slice(0, 10);
-}
-
-function toIsoDate(dateValue: string) {
-  return `${dateValue}T00:00:00`;
-}
-
 export const MovimientoForm = ({
-  open,
-  onOpenChange,
-  container,
-  availableContainers = [],
-  initialTipo = "entrada_proveedor",
+  open, onOpenChange, container, availableContainers = [], initialTipo = "entrada_proveedor",
 }: Props) => {
-  const { usuario, accessToken, hasModule } = useRole();
+  const { accessToken, hasModule, online, usuario, organizacion } = useRole();
   const queryClient = useQueryClient();
-  const [tipo, setTipo] = useState<string>(initialTipo);
-  const [productoId, setProductoId] = useState("");
-  const [containerOrigenId, setContainerOrigenId] = useState(container?.id ?? availableContainers[0]?.id ?? "");
-  const [containerDestinoId, setContainerDestinoId] = useState("");
-  const [cantidad, setCantidad] = useState("100");
-  const [numeroLote, setNumeroLote] = useState("");
-  const [fechaFabricacion, setFechaFabricacion] = useState(formatDateInput(-30));
-  const [fechaVencimiento, setFechaVencimiento] = useState(formatDateInput(180));
-  const [nombreProveedor, setNombreProveedor] = useState("Skretting Chile Ltda.");
-  const [numGuiaDespacho, setNumGuiaDespacho] = useState("");
-  const [registroSanitario, setRegistroSanitario] = useState("");
-  const [temperaturaAlmacen, setTemperaturaAlmacen] = useState("4");
-  const [numRecetaRetenida, setNumRecetaRetenida] = useState("");
-  const [numAutorizacionSag, setNumAutorizacionSag] = useState("");
-  const [observaciones, setObservaciones] = useState("");
+  const [typeId, setTypeId] = useState("");
+  const [itemId, setItemId] = useState("");
+  const [lotId, setLotId] = useState("");
+  const [originId, setOriginId] = useState("");
+  const [destinationId, setDestinationId] = useState("");
+  const [quantity, setQuantity] = useState("");
+  const [notes, setNotes] = useState("");
+  const [sernapescaCode, setSernapescaCode] = useState("");
+  const [sagAuthorization, setSagAuthorization] = useState("");
+  const [extraAttributes, setExtraAttributes] = useState<Record<string, string>>({});
   const [error, setError] = useState<string | null>(null);
+  const initialLocationId = container?.id ?? availableContainers[0]?.id ?? "";
 
   const typesQuery = useQuery({
     queryKey: ["movement-types", accessToken],
-    enabled: Boolean(accessToken),
-    queryFn: () => fetchMovementTypes(accessToken!),
-  });
-
-  const productsQuery = useQuery({
-    queryKey: ["productos", accessToken],
-    enabled: Boolean(accessToken),
-    retry: false,
+    enabled: open && Boolean(accessToken),
     queryFn: async () => {
-      const response = await fetchProductos(accessToken!);
-      return response.items;
+      if (navigator.onLine) {
+        try {
+          const types = await fetchMovementTypes(accessToken!);
+          await db.movementTypes.bulkPut(types);
+          return types;
+        } catch (cause) {
+          if (!(cause instanceof TypeError)) throw cause;
+        }
+      }
+      return db.movementTypes.where("id_organizacion").equals(organizacion.id).toArray();
     },
   });
-
-  const movementTypes = typesQuery.data ?? [
-    { id: "entrada_proveedor", codigo: "ENT", nombre: "Entrada de Proveedor", requiere_origen: false, requiere_destino: true, requiere_aprobacion: true },
-    { id: "salida_produccion", codigo: "SAL", nombre: "Salida a Producción", requiere_origen: true, requiere_destino: false, requiere_aprobacion: false },
-    { id: "traslado_interno", codigo: "TRAS", nombre: "Traslado Interno", requiere_origen: true, requiere_destino: true, requiere_aprobacion: false },
-  ];
-
-  const currentTypeConfig = movementTypes.find((t) => t.id === tipo) ?? movementTypes[0];
-
-  const selectedProduct = productsQuery.data?.find((item) => item.id === productoId) ?? null;
-  const isPackSalmoneroActive = hasModule("pack_salmonero");
-  const showSernapesca = isPackSalmoneroActive && tipo === "entrada_proveedor";
-  const showSAG = isPackSalmoneroActive && tipo === "entrada_proveedor" && selectedProduct?.categoria === "veterinario";
-  const isOperario = usuario.rol === "operario";
-
-  const destinationOptions = useMemo(
-    () => availableContainers.filter((item) => item.id !== containerOrigenId),
-    [availableContainers, containerOrigenId],
-  );
+  const itemsQuery = useQuery({
+    queryKey: ["items", accessToken],
+    enabled: open && Boolean(accessToken),
+    queryFn: async () => {
+      if (navigator.onLine) {
+        try {
+          const items = await fetchItems(accessToken!);
+          await db.items.bulkPut(items);
+          return items;
+        } catch (cause) {
+          if (!(cause instanceof TypeError)) throw cause;
+        }
+      }
+      return db.items.where("id_organizacion").equals(organizacion.id).toArray();
+    },
+  });
+  const lotsQuery = useQuery({
+    queryKey: ["lots", accessToken, itemId],
+    enabled: open && Boolean(accessToken && itemId),
+    queryFn: async () => {
+      if (navigator.onLine) {
+        try {
+          const lots = await fetchLotsByItem(accessToken!, itemId);
+          await db.lots.bulkPut(lots);
+          return lots;
+        } catch (cause) {
+          if (!(cause instanceof TypeError)) throw cause;
+        }
+      }
+      return db.lots.where("id_item").equals(itemId).toArray();
+    },
+  });
 
   useEffect(() => {
     if (!open) return;
-
-    const defaultOriginId = container?.id ?? availableContainers[0]?.id ?? "";
-    setTipo(initialTipo);
-    setProductoId("");
-    setContainerOrigenId(defaultOriginId);
-    setContainerDestinoId("");
-    setCantidad("100");
-    setNumeroLote("");
-    setFechaFabricacion(formatDateInput(-30));
-    setFechaVencimiento(formatDateInput(180));
-    setNombreProveedor("Skretting Chile Ltda.");
-    setNumGuiaDespacho("");
-    setRegistroSanitario("");
-    setTemperaturaAlmacen("4");
-    setNumRecetaRetenida("");
-    setNumAutorizacionSag("");
-    setObservaciones("");
+    setTypeId("");
+    setItemId("");
+    setLotId("");
+    setOriginId(initialLocationId);
+    setDestinationId("");
+    setQuantity("");
+    setNotes("");
+    setSernapescaCode("");
+    setSagAuthorization("");
+    setExtraAttributes({});
     setError(null);
-  }, [open, container?.id, availableContainers, initialTipo]);
+  }, [open, initialLocationId, initialTipo]);
 
-  const originContainer = availableContainers.find((item) => item.id === containerOrigenId) ?? container;
+  useEffect(() => {
+    if (!open || typeId || !typesQuery.data?.length) return;
+    const preferred = preferredEffect[initialTipo];
+    const selected = typesQuery.data.find((type) =>
+      type.id === initialTipo || type.codigo === initialTipo || type.efecto_stock === preferred,
+    ) ?? typesQuery.data[0];
+    setTypeId(selected.id);
+  }, [open, typeId, initialTipo, typesQuery.data]);
 
-  const createMutation = useMutation({
-    mutationFn: ({ accessToken: token, payload }: { accessToken: string; payload: CreateMovimientoPayload }) =>
-      createMovimiento(token, payload),
-    onSuccess: (data) => {
-      toast.success(
-        data.estado === "aprobado"
-          ? "Movimiento registrado y aplicado"
-          : "Movimiento registrado en estado pendiente de aprobacion",
-      );
-      queryClient.invalidateQueries({ queryKey: ["inventory-snapshot"] });
-      queryClient.invalidateQueries({ queryKey: ["dashboard-kpis"] });
-      queryClient.invalidateQueries({ queryKey: ["dashboard-galpones"] });
-      queryClient.invalidateQueries({ queryKey: ["dashboard-pending-movements"] });
-      queryClient.invalidateQueries({ queryKey: ["dashboard-alertas"] });
-      queryClient.invalidateQueries({ queryKey: ["movimientos"] });
+  const type = typesQuery.data?.find((value) => value.id === typeId);
+  const item = itemsQuery.data?.find((value) => value.id === itemId);
+  const packActive = hasModule("pack_salmonero");
+  const locations = [...availableContainers, ...(container ? [container] : [])]
+    .filter((value, index, all) => value.id && all.findIndex((candidate) => candidate.id === value.id) === index);
+
+  useEffect(() => {
+    if (open && type?.requiere_destino && !type.requiere_origen && container?.id && !destinationId) {
+      setDestinationId(container.id);
+    }
+  }, [open, type, container?.id, destinationId]);
+
+  const queueMovement = async (payload: CreateMovementPayload) => {
+    if (!hasModule("offline_sync")) {
+      setError("Este módulo no permite registrar movimientos sin conexión.");
+      return;
+    }
+    try {
+      await queueLocalMovement({
+        organizationId: organizacion.id, userId: usuario.id,
+        id_tipo_movimiento: payload.id_tipo_movimiento, id_item: payload.id_item,
+        id_lote: payload.id_lote, id_ubicacion_origen: payload.id_ubicacion_origen,
+        id_ubicacion_destino: payload.id_ubicacion_destino, cantidad: payload.cantidad,
+        unidad_medida: payload.unidad_medida, observaciones: payload.observaciones,
+        atributos: payload.atributos,
+      });
+      toast.success("Movimiento guardado en este dispositivo; se sincronizará al recuperar conexión.");
+      onOpenChange(false);
+    } catch {
+      setError("No se pudo guardar el movimiento localmente.");
+    }
+  };
+
+  const mutation = useMutation({
+    mutationFn: (payload: CreateMovementPayload) => createMovement(accessToken!, payload),
+    onSuccess: (request) => {
+      toast.success(request.estado === "aprobada" ? "Movimiento registrado y aplicado" : "Solicitud de movimiento registrada");
+      for (const key of ["inventory-snapshot", "dashboard-kpis", "dashboard-pending-movements", "movimientos"]) {
+        queryClient.invalidateQueries({ queryKey: [key] });
+      }
       onOpenChange(false);
     },
-    onError: (mutationError) => {
-      setError(mutationError instanceof Error ? mutationError.message : "No se pudo registrar el movimiento");
+    onError: async (cause, payload) => {
+      if (cause instanceof TypeError) {
+        await queueMovement(payload);
+      } else {
+        setError(cause instanceof Error ? cause.message : "No se pudo registrar el movimiento");
+      }
     },
   });
 
-  const handleSubmit = () => {
-    if (!accessToken) {
-      setError("No hay sesión activa.");
-      return false;
+  const submit = () => {
+    if (!accessToken || !type || !item) {
+      setError("Selecciona un tipo de movimiento y un ítem.");
+      return;
     }
-
-    if (!productoId) {
-      setError("Selecciona un producto o ítem.");
-      return false;
+    if (type.requiere_origen && !originId || type.requiere_destino && !destinationId) {
+      setError("Selecciona las ubicaciones requeridas para este movimiento.");
+      return;
     }
-
-    if (!containerOrigenId) {
-      setError("Selecciona una ubicación de origen.");
-      return false;
+    if (!Number.isFinite(Number(quantity)) || Number(quantity) <= 0) {
+      setError("La cantidad debe ser mayor que cero.");
+      return;
     }
-
-    if (!numeroLote.trim()) {
-      setError("Ingresa el número de lote.");
-      return false;
+    if (packActive && (!sernapescaCode.trim() || !sagAuthorization.trim())) {
+      setError("Completa los identificadores SERNAPESCA y SAG del pack activo.");
+      return;
     }
-
-    if (!fechaVencimiento) {
-      setError("Ingresa la fecha de vencimiento.");
-      return false;
+    if (type.campos_adicionales?.some((field) => field.requerido && !extraAttributes[field.nombre]?.trim())) {
+      setError("Completa los atributos requeridos para este tipo de movimiento.");
+      return;
     }
-
-    if (showSernapesca) {
-      if (!fechaFabricacion || !nombreProveedor.trim() || !numGuiaDespacho.trim() || !registroSanitario.trim()) {
-        setError("Completa todos los campos requeridos por SERNAPESCA.");
-        return false;
-      }
+    const attributes: Record<string, string> = { ...extraAttributes };
+    if (packActive) {
+      attributes.codigo_concesion_sernapesca = sernapescaCode.trim();
+      attributes.autorizacion_sag = sagAuthorization.trim();
     }
-
-    if (currentTypeConfig?.requiere_destino && !containerDestinoId) {
-      setError("Selecciona la ubicación de destino.");
-      return false;
-    }
-
-    if (showSAG && (!numRecetaRetenida.trim() || !numAutorizacionSag.trim())) {
-      setError("Completa los campos SAG para productos veterinarios.");
-      return false;
-    }
-
     setError(null);
-    return true;
-  };
-
-  const submitRealMovement = () => {
-    if (!accessToken || !productoId || !containerOrigenId) return;
-
-    createMutation.mutate({
-      accessToken,
-      payload: {
-        id_container: containerOrigenId,
-        id_producto: productoId,
-        tipo: tipo as CreateMovimientoPayload["tipo"],
-        cantidad: Number(cantidad),
-        numeroLote,
-        fecha_fabricacion: showSernapesca && fechaFabricacion ? toIsoDate(fechaFabricacion) : undefined,
-        fecha_vencimiento: toIsoDate(fechaVencimiento),
-        nombre_proveedor: showSernapesca ? nombreProveedor : undefined,
-        num_guia_despacho: showSernapesca ? numGuiaDespacho : undefined,
-        registro_sanitario: showSernapesca ? registroSanitario : undefined,
-        temperatura_almacen: showSernapesca && temperaturaAlmacen ? Number(temperaturaAlmacen) : undefined,
-        num_receta_retenida: showSAG ? numRecetaRetenida : undefined,
-        num_autorizacion_sag: showSAG ? numAutorizacionSag : undefined,
-        id_container_destino: currentTypeConfig?.requiere_destino ? containerDestinoId : undefined,
-        observaciones: observaciones || undefined,
-      },
-    });
+    const payload: CreateMovementPayload = {
+      id_tipo_movimiento: type.id,
+      id_item: item.id,
+      id_lote: lotId || null,
+      id_ubicacion_origen: type.requiere_origen ? originId : null,
+      id_ubicacion_destino: type.requiere_destino ? destinationId : null,
+      cantidad: Number(quantity),
+      unidad_medida: item.unidad_medida,
+      observaciones: notes.trim() || null,
+      atributos: attributes,
+    };
+    if (!online || !navigator.onLine) {
+      void queueMovement(payload);
+    } else {
+      mutation.mutate(payload);
+    }
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Registrar movimiento de inventario</DialogTitle>
-          <DialogDescription>
-            {isOperario
-              ? "El movimiento quedara pendiente de aprobacion por jefatura."
-              : "Formulario configurable conectado al motor de reglas del backend."}
-          </DialogDescription>
+          <DialogTitle>Registrar movimiento</DialogTitle>
+          <DialogDescription>Los tipos, permisos y reglas provienen de tu organización.</DialogDescription>
         </DialogHeader>
-
-        <div className="space-y-4 py-2">
-          {/* Selector dinámico de tipos de movimiento */}
-          <div className="grid grid-cols-3 gap-2">
-            {movementTypes.map((t) => {
-              const Icon = defaultTypeIcons[t.id] ?? ArrowDownToLine;
-              const isSelected = tipo === t.id;
-
-              return (
-                <button
-                  key={t.id}
-                  type="button"
-                  onClick={() => setTipo(t.id)}
-                  className={`p-3 rounded-lg border text-left transition flex flex-col justify-between ${
-                    isSelected
-                      ? "border-primary bg-primary/10 text-primary font-medium"
-                      : "border-border hover:border-primary/50 text-muted-foreground"
-                  }`}
-                >
-                  <Icon className="h-4 w-4 mb-1.5" />
-                  <div>
-                    <div className="text-xs font-semibold leading-tight text-foreground">{t.nombre}</div>
-                    <div className="text-[10px] text-muted-foreground mt-0.5 line-clamp-1">{t.codigo}</div>
-                  </div>
-                </button>
-              );
-            })}
+        <div className="space-y-4">
+          {(typesQuery.isError || itemsQuery.isError) && <p role="alert" className="text-destructive text-sm">No se pudieron cargar los catálogos. Revisa tu conexión o permisos.</p>}
+          {!navigator.onLine && (!typesQuery.data?.length || !itemsQuery.data?.length) && <p role="alert" className="text-destructive text-sm">No hay catálogos guardados para crear este movimiento sin conexión.</p>}
+          <div className="space-y-1">
+            <Label>Tipo de movimiento</Label>
+            <Select value={typeId} onValueChange={setTypeId}>
+              <SelectTrigger><SelectValue placeholder="Selecciona tipo" /></SelectTrigger>
+              <SelectContent>{typesQuery.data?.map((value) => <SelectItem key={value.id} value={value.id}>{value.nombre}</SelectItem>)}</SelectContent>
+            </Select>
           </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label>Ubicación origen *</Label>
-              <Select value={containerOrigenId} onValueChange={setContainerOrigenId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecciona origen" />
-                </SelectTrigger>
-                <SelectContent>
-                  {availableContainers.map((item) => (
-                    <SelectItem key={item.id} value={item.id}>
-                      {item.codigo} · {item.producto ?? item.tipoProductoPermitido ?? "Disponible"}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
+          {type?.requiere_origen && (
+            <div className="space-y-1">
+              <Label>Ubicación de origen</Label>
+              <Select value={originId} onValueChange={setOriginId}>
+                <SelectTrigger><SelectValue placeholder="Selecciona origen" /></SelectTrigger>
+                <SelectContent>{locations.map((value) => <SelectItem key={value.id} value={value.id!}>{value.codigo ?? value.id}</SelectItem>)}</SelectContent>
               </Select>
             </div>
-
-            {currentTypeConfig?.requiere_destino && (
-              <div className="space-y-2">
-                <Label>Ubicación destino *</Label>
-                <Select value={containerDestinoId} onValueChange={setContainerDestinoId}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecciona destino" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {destinationOptions.map((item) => (
-                      <SelectItem key={item.id} value={item.id}>
-                        {item.codigo} · {item.ocupacion ?? 0}%
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-
-            <div className="space-y-2 sm:col-span-2">
-              <Label>Ítem / Producto *</Label>
-              <Select value={productoId} onValueChange={setProductoId}>
-                <SelectTrigger>
-                  <SelectValue placeholder={productsQuery.isLoading ? "Cargando ítems..." : "Selecciona ítem"} />
-                </SelectTrigger>
-                <SelectContent>
-                  {productsQuery.data?.map((prod) => (
-                    <SelectItem key={prod.id} value={prod.id}>
-                      {prod.nombre} · {prod.codigo_barras} ({prod.categoria})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
+          )}
+          {type?.requiere_destino && (
+            <div className="space-y-1">
+              <Label>Ubicación de destino</Label>
+              <Select value={destinationId} onValueChange={setDestinationId}>
+                <SelectTrigger><SelectValue placeholder="Selecciona destino" /></SelectTrigger>
+              <SelectContent>{locations.filter((value) => !type.requiere_origen || value.id !== originId).map((value) => <SelectItem key={value.id} value={value.id!}>{value.codigo ?? value.id}</SelectItem>)}</SelectContent>
               </Select>
             </div>
-
-            <div className="space-y-2">
-              <Label>Cantidad *</Label>
-              <Input
-                type="number"
-                min="1"
-                value={cantidad}
-                onChange={(event) => setCantidad(event.target.value)}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label>Número de lote *</Label>
-              <Input
-                value={numeroLote}
-                onChange={(event) => setNumeroLote(event.target.value)}
-                placeholder="LOTE-2026-X"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label>Fecha de vencimiento *</Label>
-              <Input
-                type="date"
-                value={fechaVencimiento}
-                onChange={(event) => setFechaVencimiento(event.target.value)}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label>Unidad de medida</Label>
-              <div className="h-10 rounded-md border border-border px-3 flex items-center text-sm text-muted-foreground bg-muted/20">
-                {selectedProduct?.unidad_medida ?? originContainer?.unidadMedida ?? "unidades"}
-              </div>
-            </div>
-
-            <div className="space-y-2 sm:col-span-2">
-              <Label>Observaciones</Label>
-              <Textarea
-                rows={2}
-                value={observaciones}
-                onChange={(event) => setObservaciones(event.target.value)}
-                placeholder="Observaciones operativas (opcional)"
-              />
-            </div>
+          )}
+          <div className="space-y-1">
+            <Label>Ítem</Label>
+            <Select value={itemId} onValueChange={(value) => { setItemId(value); setLotId(""); }}>
+              <SelectTrigger><SelectValue placeholder="Selecciona ítem" /></SelectTrigger>
+              <SelectContent>{itemsQuery.data?.map((value) => <SelectItem key={value.id} value={value.id}>{value.nombre} ({value.codigo})</SelectItem>)}</SelectContent>
+            </Select>
           </div>
-
-          {/* Bloque modular SERNAPESCA (solo si módulo pack_salmonero está activo) */}
-          {showSernapesca && (
-            <SernapescaFields
-              nombreProveedor={nombreProveedor}
-              setNombreProveedor={setNombreProveedor}
-              numGuiaDespacho={numGuiaDespacho}
-              setNumGuiaDespacho={setNumGuiaDespacho}
-              registroSanitario={registroSanitario}
-              setRegistroSanitario={setRegistroSanitario}
-              temperaturaAlmacen={temperaturaAlmacen}
-              setTemperaturaAlmacen={setTemperaturaAlmacen}
-            />
-          )}
-
-          {/* Bloque modular SAG (solo si módulo pack_salmonero está activo y es veterinario) */}
-          {showSAG && (
-            <SagFields
-              numRecetaRetenida={numRecetaRetenida}
-              setNumRecetaRetenida={setNumRecetaRetenida}
-              numAutorizacionSag={numAutorizacionSag}
-              setNumAutorizacionSag={setNumAutorizacionSag}
-            />
-          )}
-
-          {error && (
-            <div className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
-              {error}
+          <div className="space-y-1">
+            <Label>Lote (opcional)</Label>
+            <Select value={lotId || "none"} onValueChange={(value) => setLotId(value === "none" ? "" : value)}>
+              <SelectTrigger><SelectValue placeholder="Sin lote" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">Sin lote</SelectItem>
+                {lotsQuery.data?.map((value) => <SelectItem key={value.id} value={value.id}>{value.numero_lote}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1"><Label>Cantidad</Label><Input type="number" min="0.0001" step="any" value={quantity} onChange={(event) => setQuantity(event.target.value)} /></div>
+            <div className="space-y-1"><Label>Unidad</Label><Input readOnly value={item?.unidad_medida ?? ""} /></div>
+          </div>
+          {type?.campos_adicionales?.map((field) => (
+            <div key={field.nombre} className="space-y-1">
+              <Label>{field.label}</Label>
+              <Input required={field.requerido} value={extraAttributes[field.nombre] ?? ""} onChange={(event) => setExtraAttributes((current) => ({ ...current, [field.nombre]: event.target.value }))} />
+            </div>
+          ))}
+          {packActive && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="space-y-1"><Label>Código concesión SERNAPESCA</Label><Input value={sernapescaCode} onChange={(event) => setSernapescaCode(event.target.value)} /></div>
+              <div className="space-y-1"><Label>Autorización SAG</Label><Input value={sagAuthorization} onChange={(event) => setSagAuthorization(event.target.value)} /></div>
             </div>
           )}
+          <div className="space-y-1"><Label>Observaciones</Label><Textarea value={notes} onChange={(event) => setNotes(event.target.value)} /></div>
+          {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
         </div>
-
-        <div className="flex justify-end gap-2 pt-2 border-t border-border">
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Cancelar
-          </Button>
-          <Button
-            className="bg-primary hover:bg-secondary"
-            disabled={createMutation.isPending || productsQuery.isLoading}
-            onClick={() => {
-              if (handleSubmit()) {
-                submitRealMovement();
-              }
-            }}
-          >
-            {createMutation.isPending ? "Registrando..." : "Registrar movimiento"}
-          </Button>
-        </div>
+        <div className="flex justify-end gap-2"><Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button><Button onClick={submit} disabled={mutation.isPending || typesQuery.isLoading || itemsQuery.isLoading}>Registrar</Button></div>
       </DialogContent>
     </Dialog>
   );

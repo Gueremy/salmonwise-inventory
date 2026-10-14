@@ -39,25 +39,21 @@ export async function queueLocalMovement(
   return record;
 }
 
-export async function getPendingMovements(orgId?: string): Promise<LocalMovementRecord[]> {
-  if (orgId) {
-    return db.pendingMovements
-      .where("organization_id")
-      .equals(orgId)
-      .and((m) => m.status === "pending" || m.status === "rejected")
-      .toArray();
-  }
-  return db.pendingMovements
-    .where("status")
-    .equals("pending")
+export async function getPendingMovements(orgId: string, userId?: string): Promise<LocalMovementRecord[]> {
+  return db.pendingMovements.where("organization_id").equals(orgId)
+    .and((movement) => (!userId || movement.user_id === userId)
+      && (movement.status === "pending" || movement.status === "syncing"))
     .toArray();
 }
 
-export async function getPendingMovementsCount(): Promise<number> {
-  return db.pendingMovements
-    .where("status")
-    .equals("pending")
-    .count();
+export async function getPendingMovementsCount(orgId: string, userId?: string): Promise<number> {
+  return (await getPendingMovements(orgId, userId)).length;
+}
+
+export async function getRejectedMovements(orgId: string, userId: string): Promise<LocalMovementRecord[]> {
+  return db.pendingMovements.where("organization_id").equals(orgId)
+    .and((movement) => movement.user_id === userId && movement.status === "rejected")
+    .toArray();
 }
 
 export async function updateMovementStatus(

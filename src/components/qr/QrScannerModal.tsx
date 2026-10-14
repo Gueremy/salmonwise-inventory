@@ -3,7 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { QrCode, Camera, Search, AlertCircle, VideoOff } from "lucide-react";
+import { QrCode, Search, VideoOff } from "lucide-react";
 import { toast } from "sonner";
 
 interface Props {
@@ -18,6 +18,7 @@ export const QrScannerModal = ({ open, onOpenChange, onCodeScanned }: Props) => 
   const [cameraError, setCameraError] = useState<string | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const scanFrameRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (!open) {
@@ -33,6 +34,43 @@ export const QrScannerModal = ({ open, onOpenChange, onCodeScanned }: Props) => 
       stopCamera();
     };
   }, [open]);
+
+  useEffect(() => {
+    if (!open || !hasCamera || !videoRef.current) return;
+    const video = videoRef.current;
+    video.srcObject = streamRef.current;
+    type Detector = { detect: (source: HTMLVideoElement) => Promise<Array<{ rawValue: string }>> };
+    const DetectorClass = (window as unknown as { BarcodeDetector?: new (options: { formats: string[] }) => Detector }).BarcodeDetector;
+    if (!DetectorClass) {
+      setCameraError("El escaneo automático no está disponible en este navegador. Usa el código manual.");
+      return;
+    }
+    const detector = new DetectorClass({ formats: ["qr_code", "ean_13", "code_128"] });
+    let active = true;
+    const scan = async () => {
+      if (!active) return;
+      if (video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
+        try {
+          const codes = await detector.detect(video);
+          const value = codes[0]?.rawValue?.trim();
+          if (value) {
+            active = false;
+            onCodeScanned(value);
+            onOpenChange(false);
+            return;
+          }
+        } catch {
+          // Un fotograma sin código legible no cancela el escaneo.
+        }
+      }
+      scanFrameRef.current = requestAnimationFrame(scan);
+    };
+    scanFrameRef.current = requestAnimationFrame(scan);
+    return () => {
+      active = false;
+      if (scanFrameRef.current !== null) cancelAnimationFrame(scanFrameRef.current);
+    };
+  }, [open, hasCamera, onCodeScanned, onOpenChange]);
 
   const startCamera = async () => {
     if (!navigator.mediaDevices?.getUserMedia) {
@@ -58,6 +96,7 @@ export const QrScannerModal = ({ open, onOpenChange, onCodeScanned }: Props) => 
   };
 
   const stopCamera = () => {
+    if (scanFrameRef.current !== null) cancelAnimationFrame(scanFrameRef.current);
     if (streamRef.current) {
       streamRef.current.getTracks().forEach((track) => track.stop());
       streamRef.current = null;
@@ -104,6 +143,7 @@ export const QrScannerModal = ({ open, onOpenChange, onCodeScanned }: Props) => 
                 <div className="absolute inset-8 border-2 border-primary/70 rounded-lg pointer-events-none animate-pulse flex items-center justify-center">
                   <div className="w-full h-0.5 bg-primary/80" />
                 </div>
+                {cameraError && <p className="absolute bottom-1 left-2 right-2 text-xs text-white bg-black/70 p-1">{cameraError}</p>}
               </>
             ) : (
               <div className="p-4 text-center text-muted-foreground space-y-2">

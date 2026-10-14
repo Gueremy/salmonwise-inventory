@@ -70,3 +70,24 @@ export async function apiFetch<T>(endpoint: string, options: RequestOptions = {}
 
   return response.json() as Promise<T>;
 }
+
+export async function apiFetchAllPages<T>(
+  endpoint: string,
+  token: string,
+  params: RequestOptions["params"] = {},
+): Promise<T[]> {
+  const pageSize = 100;
+  const first = await apiFetch<T[] | { items: T[]; total: number; pages?: number }>(endpoint, {
+    token, params: { ...params, page: 1, size: pageSize },
+  });
+  if (Array.isArray(first)) return first;
+  const items = [...first.items];
+  const pages = first.pages ?? Math.ceil(first.total / pageSize);
+  for (let page = 2; page <= pages; page++) {
+    const response = await apiFetch<{ items: T[] }>(endpoint, {
+      token, params: { ...params, page, size: pageSize },
+    });
+    items.push(...response.items);
+  }
+  return items;
+}

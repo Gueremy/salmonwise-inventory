@@ -1,5 +1,21 @@
 import { apiFetch, API_BASE_URL } from "./client";
 
+export interface SessionContext {
+  usuario: { id: string; nombre: string; rol: string; id_sede: string | null };
+  organizacion: { id: string; nombre: string; slug: string };
+  configuracion_operativa: {
+    umbrales_color: { alerta: number; critica: number };
+    paleta_colores: Record<string, string>;
+    unidades: Record<string, { dimension: string; factor: string }>;
+  };
+  permisos: string[];
+  modulos_activos: string[];
+}
+
+export function fetchSession(token: string): Promise<SessionContext> {
+  return apiFetch<SessionContext>("/api/v2/sesion", { token });
+}
+
 export interface AuthTokens {
   access_token: string;
   refresh_token: string;

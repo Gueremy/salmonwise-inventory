@@ -1,34 +1,39 @@
 import { useEffect, useState, useCallback } from "react";
-import { Wifi, WifiOff, RefreshCw, AlertCircle, CheckCircle2 } from "lucide-react";
+import { Wifi, WifiOff, RefreshCw, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useRole } from "@/context/RoleContext";
-import { getPendingMovementsCount } from "@/offline/movementQueue";
+import { getPendingMovementsCount, getRejectedMovements } from "@/offline/movementQueue";
+import type { LocalMovementRecord } from "@/offline/db";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { syncAllPending } from "@/offline/syncEngine";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
 
 export const OfflineStatusIndicator = () => {
-  const { accessToken, online, setOnline, organizacion } = useRole();
+  const { accessToken, online, setOnline, organizacion, usuario } = useRole();
   const queryClient = useQueryClient();
   const [pendingCount, setPendingCount] = useState(0);
+  const [rejected, setRejected] = useState<LocalMovementRecord[]>([]);
   const [syncing, setSyncing] = useState(false);
 
   const checkPending = useCallback(async () => {
     try {
-      const count = await getPendingMovementsCount();
+      const count = await getPendingMovementsCount(organizacion.id, usuario.id);
       setPendingCount(count);
+      setRejected(await getRejectedMovements(organizacion.id, usuario.id));
     } catch {
       // IndexedDB puede estar cerrado
     }
-  }, []);
+  }, [organizacion.id, usuario.id]);
 
   const handleSync = useCallback(async () => {
     if (!accessToken || syncing) return;
     setSyncing(true);
     try {
-      const res = await syncAllPending(accessToken, organizacion.id);
+      const res = await syncAllPending(accessToken, organizacion.id, usuario.id);
       if (res.total > 0) {
-        toast.success(`Sincronización completa: ${res.sincronizados} procesados, ${res.rechazados} rechazados.`);
+        if (res.rechazados) toast.error(`${res.rechazados} movimientos rechazados. Revisa el motivo en el indicador de sincronización.`);
+        else toast.success(`Sincronización completa: ${res.sincronizados} movimientos recibidos por el servidor.`);
         queryClient.invalidateQueries({ queryKey: ["movimientos"] });
         queryClient.invalidateQueries({ queryKey: ["inventory-snapshot"] });
       }
@@ -38,9 +43,10 @@ export const OfflineStatusIndicator = () => {
     } finally {
       setSyncing(false);
     }
-  }, [accessToken, syncing, organizacion.id, queryClient, checkPending]);
+  }, [accessToken, syncing, organizacion.id, usuario.id, queryClient, checkPending]);
 
   useEffect(() => {
+    setOnline(navigator.onLine);
     checkPending();
     const interval = setInterval(checkPending, 5000);
 
@@ -74,6 +80,30 @@ export const OfflineStatusIndicator = () => {
           <RefreshCw className={`h-3.5 w-3.5 ${syncing ? "animate-spin" : ""}`} />
           <span>{pendingCount} Pendiente{pendingCount > 1 ? "s" : ""}</span>
         </button>
+      )}
+
+      {rejected.length > 0 && (
+        <Dialog>
+          <DialogTrigger asChild>
+            <Button size="sm" variant="outline" className="h-7 text-xs text-destructive">
+              <AlertCircle className="h-3.5 w-3.5 mr-1" /> {rejected.length} rechazado{rejected.length > 1 ? "s" : ""}
+            </Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Movimientos rechazados</DialogTitle>
+              <DialogDescription>Estos movimientos no se reintentan automáticamente. Revisa el motivo antes de crear una nueva operación.</DialogDescription>
+            </DialogHeader>
+            <div className="max-h-72 overflow-y-auto space-y-2 text-sm">
+              {rejected.map((movement) => (
+                <div key={movement.uuid_local} className="rounded border p-2">
+                  <div>Ítem {movement.id_item} · {movement.cantidad} {movement.unidad_medida}</div>
+                  <div className="text-destructive">{movement.last_error || "Rechazado por el servidor"}</div>
+                </div>
+              ))}
+            </div>
+          </DialogContent>
+        </Dialog>
       )}
 
       <div
