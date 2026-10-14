@@ -45,7 +45,7 @@ export default function Inventario() {
                     <div
                       key={galpon.id}
                       className="flex-1 rounded p-2 text-[11px]"
-                      style={{ backgroundColor: `${estadoColor[estado]}22`, color: estadoColor[estado] }}
+                      style={{ backgroundColor: estadoColor[estado].replace(/\)$/, " / 0.13)"), color: estadoColor[estado] }}
                     >
                       <div className="font-bold">{galpon.codigo}</div>
                       <div>{galpon.ocupacion_prom}%</div>

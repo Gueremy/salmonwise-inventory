@@ -35,7 +35,7 @@ const items: NavItem[] = [
   { to: "/settings", label: "Configuración", icon: Settings },
 ];
 
-export const Sidebar = () => {
+export const Sidebar = ({ className = "", onNavigate }: { className?: string; onNavigate?: () => void }) => {
   const { usuario, can, hasModule } = useRole();
 
   const visible = items.filter((item) => {
@@ -46,7 +46,7 @@ export const Sidebar = () => {
   });
 
   return (
-    <aside className="w-64 shrink-0 bg-sidebar text-sidebar-foreground flex flex-col h-screen sticky top-0">
+    <aside className={`w-64 shrink-0 bg-sidebar text-sidebar-foreground flex flex-col h-screen sticky top-0 ${className}`}>
       <div className="px-5 py-5 border-b border-sidebar-border">
         <div className="flex items-center gap-2.5">
           <div className="h-9 w-9 rounded-md bg-sidebar-primary flex items-center justify-center">
@@ -65,6 +65,7 @@ export const Sidebar = () => {
           <NavLink
             key={item.to}
             to={item.to}
+            onClick={onNavigate}
             className={({ isActive }) =>
               `flex items-center justify-between gap-3 px-3 py-2.5 rounded-md text-sm transition ${
                 isActive
@@ -85,7 +86,7 @@ export const Sidebar = () => {
           </NavLink>
         ))}
       </nav>
-      <div className="px-4 py-3 border-t border-sidebar-border text-xs text-sidebar-foreground/60 flex items-center justify-between">
+      <div className="px-4 py-3 border-t border-sidebar-border text-xs text-sidebar-foreground/90 flex items-center justify-between">
         <span>v2.0.0</span>
         <span className="text-[10px] uppercase tracking-wider bg-sidebar-accent px-1.5 py-0.5 rounded">
           {usuario.rol}

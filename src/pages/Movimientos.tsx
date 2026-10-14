@@ -28,7 +28,7 @@ function formatDate(dateValue: string) {
 }
 
 export default function Movimientos() {
-  const { accessToken, can } = useRole();
+  const { accessToken, can, hasModule } = useRole();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -74,6 +74,7 @@ export default function Movimientos() {
   );
 
   const canReview = can("movimiento:approve");
+  const canReject = can("movimiento:reject");
 
   const approveMutation = useMutation({
     mutationFn: ({ token, id }: { token: string; id: string }) => approveMovimiento(token, id),
@@ -192,7 +193,7 @@ export default function Movimientos() {
               ))}
             </div>
 
-            <div className="mt-5 p-3 rounded-md bg-secondary/5 border border-secondary/30">
+            {hasModule("pack_salmonero") && <div className="mt-5 p-3 rounded-md bg-secondary/5 border border-secondary/30">
               <div className="text-xs font-semibold text-secondary mb-2">Datos regulatorios</div>
               <div className="text-xs space-y-1.5 text-muted-foreground">
                 <div>Proveedor: <span className="text-foreground font-medium">{selected.nombre_proveedor ?? "—"}</span></div>
@@ -201,17 +202,18 @@ export default function Movimientos() {
                 <div>Registro sanitario: <span className="text-foreground font-medium">{selected.registro_sanitario ?? "—"}</span></div>
                 <div>Temp. almacen: <span className="text-foreground font-medium">{selected.temperatura_almacen ?? "—"}</span></div>
               </div>
-            </div>
+            </div>}
 
-            {canReview && selected.estado === "pendiente" && (
+            {(canReview || canReject) && selected.estado === "pendiente" && (
               <div className="mt-5 space-y-3">
-                <Button
+                {canReview && <Button
                   className="w-full"
                   onClick={() => accessToken && approveMutation.mutate({ token: accessToken, id: selected.id })}
                   disabled={approveMutation.isPending || rejectMutation.isPending}
                 >
                   <CheckCircle2 className="h-4 w-4 mr-2" /> Aprobar movimiento
-                </Button>
+                </Button>}
+                {canReject && <>
                 <Textarea
                   rows={3}
                   placeholder="Motivo de rechazo"
@@ -226,6 +228,7 @@ export default function Movimientos() {
                 >
                   <XCircle className="h-4 w-4 mr-2" /> Rechazar movimiento
                 </Button>
+                </>}
               </div>
             )}
 

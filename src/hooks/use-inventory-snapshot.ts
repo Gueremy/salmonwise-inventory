@@ -14,6 +14,7 @@ export function useInventorySnapshot() {
   const query = useQuery({
     queryKey: ["inventory-snapshot", accessToken, organizacion.id],
     enabled: Boolean(accessToken),
+    networkMode: "always",
     retry: 1,
     queryFn: async () => {
       // 1. Obtener sitios activos

@@ -120,16 +120,15 @@ export default function Login() {
           </div>
           <div>
             <h2 className="text-4xl font-bold leading-tight mb-3">
-              Inventario 3D para
+              Inventario visual para
               <br />
-              la industria salmonera
+              tu organización
             </h2>
             <p className="text-primary-foreground/80 max-w-md">
-              Visualizacion en tiempo real de bodegas, galpones y containers en pontones,
-              plantas y centros de la Region de Los Lagos.
+              Visualización en tiempo real de sitios, zonas y ubicaciones de inventario.
             </p>
           </div>
-          <div className="text-xs text-primary-foreground/60">© 2026 Skretting Los Lagos</div>
+          <div className="text-xs text-primary-foreground/60">© 2026 SalmoTrack</div>
         </div>
       </div>
 
@@ -144,7 +143,7 @@ export default function Login() {
 
           <div>
             <h1 className="text-2xl font-bold tracking-tight">Ingresar</h1>
-            <p className="text-sm text-muted-foreground mt-1">Accede a tu panel conectado al backend local.</p>
+            <p className="text-sm text-muted-foreground mt-1">Accede al inventario de tu organización.</p>
           </div>
 
           <div className="space-y-4">

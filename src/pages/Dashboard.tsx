@@ -251,7 +251,7 @@ export default function Dashboard() {
           <div className="p-5 border-b border-border">
             <h3 className="font-semibold">Movimientos pendientes de aprobacion</h3>
           </div>
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto focus:outline focus:outline-2 focus:outline-primary" tabIndex={0} role="region" aria-label="Tabla de movimientos pendientes">
             <table className="w-full text-sm">
               <thead className="bg-muted/40 text-xs uppercase text-muted-foreground">
                 <tr>

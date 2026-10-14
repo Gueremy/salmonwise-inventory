@@ -10,10 +10,13 @@
 - CSV/XLSX tienen vista previa del servidor y perfiles de mapeo guardables/seleccionables.
 - Exportaciones superiores a 10 000 filas descargan todas las páginas en ZIP. Pendiente una instantánea consistente bajo escrituras concurrentes y ensayo de memoria con volumen real.
 - Outbox transaccional para webhooks de movimientos e importación; rollback y deduplicación validados en PostgreSQL.
-- Migraciones verificadas, 151 pruebas backend, 6 PostgreSQL y 15 frontend; TypeScript, lint sin errores y build pasan.
+- Migraciones verificadas, 151 pruebas backend, 7 PostgreSQL y 17 frontend; TypeScript, lint sin errores y build pasan.
 - Smoke de ingreso y ocho pantallas pasa a 1440 y 390 px, sin errores JavaScript/API; script reproducible en `scripts/smoke-integration.py`.
+- El flujo de navegador real cubre entrada online, cola offline tras recarga, sincronización, lote mixto aceptado/rechazado, QR manual y sesión expirada. Axe-core pasó nueve estados de pantalla WCAG 2.1 A/AA sin infracciones.
+- La navegación móvil usa un menú en el encabezado; el smoke de 390 px comprobó navegación y ausencia de desborde horizontal.
+- PostgreSQL valida un mismo UUID y una regla de alerta bajo solicitudes simultáneas. Carga local: 100 lecturas de dos rutas con 10 concurrentes, sin fallos (p95 238,2 y 53,1 ms).
 
-**El plan completo aún no está cerrado.** Quedan automatización E2E de mutaciones/offline/sesión expirada, revisión de personalización y accesibilidad, QR en dispositivos, concurrencia del mismo UUID/reglas de alerta, carga representativa, migración/rollback con datos autorizados y conectores reales. Los porcentajes meta no se acreditan sólo con el smoke.
+**El plan completo aún no está cerrado.** Quedan aprobación multietapa y traslado probados de punta a punta en navegador, QR con cámara en dispositivos reales, aislamiento visual entre cuentas, contraste de paletas reales, carga representativa de producción, migración/rollback con datos autorizados y conectores reales. Los porcentajes meta no se acreditan sólo con el smoke.
 
 ## Fase 0 — Fijar la versión conjunta
 

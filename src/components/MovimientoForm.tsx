@@ -52,8 +52,9 @@ export const MovimientoForm = ({
   const initialLocationId = container?.id ?? availableContainers[0]?.id ?? "";
 
   const typesQuery = useQuery({
-    queryKey: ["movement-types", accessToken],
+    queryKey: ["movement-types", accessToken, organizacion.id],
     enabled: open && Boolean(accessToken),
+    networkMode: "always",
     queryFn: async () => {
       if (navigator.onLine) {
         try {
@@ -68,8 +69,9 @@ export const MovimientoForm = ({
     },
   });
   const itemsQuery = useQuery({
-    queryKey: ["items", accessToken],
+    queryKey: ["items", accessToken, organizacion.id],
     enabled: open && Boolean(accessToken),
+    networkMode: "always",
     queryFn: async () => {
       if (navigator.onLine) {
         try {
@@ -84,8 +86,9 @@ export const MovimientoForm = ({
     },
   });
   const lotsQuery = useQuery({
-    queryKey: ["lots", accessToken, itemId],
+    queryKey: ["lots", accessToken, organizacion.id, itemId],
     enabled: open && Boolean(accessToken && itemId),
+    networkMode: "always",
     queryFn: async () => {
       if (navigator.onLine) {
         try {
@@ -231,41 +234,41 @@ export const MovimientoForm = ({
           {(typesQuery.isError || itemsQuery.isError) && <p role="alert" className="text-destructive text-sm">No se pudieron cargar los catálogos. Revisa tu conexión o permisos.</p>}
           {!navigator.onLine && (!typesQuery.data?.length || !itemsQuery.data?.length) && <p role="alert" className="text-destructive text-sm">No hay catálogos guardados para crear este movimiento sin conexión.</p>}
           <div className="space-y-1">
-            <Label>Tipo de movimiento</Label>
+            <Label htmlFor="movement-type">Tipo de movimiento</Label>
             <Select value={typeId} onValueChange={setTypeId}>
-              <SelectTrigger><SelectValue placeholder="Selecciona tipo" /></SelectTrigger>
+              <SelectTrigger id="movement-type"><SelectValue placeholder="Selecciona tipo" /></SelectTrigger>
               <SelectContent>{typesQuery.data?.map((value) => <SelectItem key={value.id} value={value.id}>{value.nombre}</SelectItem>)}</SelectContent>
             </Select>
           </div>
           {type?.requiere_origen && (
             <div className="space-y-1">
-              <Label>Ubicación de origen</Label>
+                <Label htmlFor="movement-origin">Ubicación de origen</Label>
               <Select value={originId} onValueChange={setOriginId}>
-                <SelectTrigger><SelectValue placeholder="Selecciona origen" /></SelectTrigger>
+                <SelectTrigger id="movement-origin"><SelectValue placeholder="Selecciona origen" /></SelectTrigger>
                 <SelectContent>{locations.map((value) => <SelectItem key={value.id} value={value.id!}>{value.codigo ?? value.id}</SelectItem>)}</SelectContent>
               </Select>
             </div>
           )}
           {type?.requiere_destino && (
             <div className="space-y-1">
-              <Label>Ubicación de destino</Label>
+                <Label htmlFor="movement-destination">Ubicación de destino</Label>
               <Select value={destinationId} onValueChange={setDestinationId}>
-                <SelectTrigger><SelectValue placeholder="Selecciona destino" /></SelectTrigger>
+                <SelectTrigger id="movement-destination"><SelectValue placeholder="Selecciona destino" /></SelectTrigger>
               <SelectContent>{locations.filter((value) => !type.requiere_origen || value.id !== originId).map((value) => <SelectItem key={value.id} value={value.id!}>{value.codigo ?? value.id}</SelectItem>)}</SelectContent>
               </Select>
             </div>
           )}
           <div className="space-y-1">
-            <Label>Ítem</Label>
+            <Label htmlFor="movement-item">Ítem</Label>
             <Select value={itemId} onValueChange={(value) => { setItemId(value); setLotId(""); }}>
-              <SelectTrigger><SelectValue placeholder="Selecciona ítem" /></SelectTrigger>
+              <SelectTrigger id="movement-item"><SelectValue placeholder="Selecciona ítem" /></SelectTrigger>
               <SelectContent>{itemsQuery.data?.map((value) => <SelectItem key={value.id} value={value.id}>{value.nombre} ({value.codigo})</SelectItem>)}</SelectContent>
             </Select>
           </div>
           <div className="space-y-1">
-            <Label>Lote (opcional)</Label>
+            <Label htmlFor="movement-lot">Lote (opcional)</Label>
             <Select value={lotId || "none"} onValueChange={(value) => setLotId(value === "none" ? "" : value)}>
-              <SelectTrigger><SelectValue placeholder="Sin lote" /></SelectTrigger>
+              <SelectTrigger id="movement-lot"><SelectValue placeholder="Sin lote" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="none">Sin lote</SelectItem>
                 {lotsQuery.data?.map((value) => <SelectItem key={value.id} value={value.id}>{value.numero_lote}</SelectItem>)}
@@ -273,22 +276,22 @@ export const MovimientoForm = ({
             </Select>
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1"><Label>Cantidad</Label><Input type="number" min="0.0001" step="any" value={quantity} onChange={(event) => setQuantity(event.target.value)} /></div>
-            <div className="space-y-1"><Label>Unidad</Label><Input readOnly value={item?.unidad_medida ?? ""} /></div>
+            <div className="space-y-1"><Label htmlFor="movement-quantity">Cantidad</Label><Input id="movement-quantity" type="number" min="0.0001" step="any" value={quantity} onChange={(event) => setQuantity(event.target.value)} /></div>
+            <div className="space-y-1"><Label htmlFor="movement-unit">Unidad</Label><Input id="movement-unit" readOnly value={item?.unidad_medida ?? ""} /></div>
           </div>
           {type?.campos_adicionales?.map((field) => (
             <div key={field.nombre} className="space-y-1">
-              <Label>{field.label}</Label>
-              <Input required={field.requerido} value={extraAttributes[field.nombre] ?? ""} onChange={(event) => setExtraAttributes((current) => ({ ...current, [field.nombre]: event.target.value }))} />
+              <Label htmlFor={`movement-extra-${field.nombre}`}>{field.label}</Label>
+              <Input id={`movement-extra-${field.nombre}`} required={field.requerido} value={extraAttributes[field.nombre] ?? ""} onChange={(event) => setExtraAttributes((current) => ({ ...current, [field.nombre]: event.target.value }))} />
             </div>
           ))}
           {packActive && (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div className="space-y-1"><Label>Código concesión SERNAPESCA</Label><Input value={sernapescaCode} onChange={(event) => setSernapescaCode(event.target.value)} /></div>
-              <div className="space-y-1"><Label>Autorización SAG</Label><Input value={sagAuthorization} onChange={(event) => setSagAuthorization(event.target.value)} /></div>
+              <div className="space-y-1"><Label htmlFor="movement-sernapesca">Código concesión SERNAPESCA</Label><Input id="movement-sernapesca" value={sernapescaCode} onChange={(event) => setSernapescaCode(event.target.value)} /></div>
+              <div className="space-y-1"><Label htmlFor="movement-sag">Autorización SAG</Label><Input id="movement-sag" value={sagAuthorization} onChange={(event) => setSagAuthorization(event.target.value)} /></div>
             </div>
           )}
-          <div className="space-y-1"><Label>Observaciones</Label><Textarea value={notes} onChange={(event) => setNotes(event.target.value)} /></div>
+          <div className="space-y-1"><Label htmlFor="movement-notes">Observaciones</Label><Textarea id="movement-notes" value={notes} onChange={(event) => setNotes(event.target.value)} /></div>
           {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
         </div>
         <div className="flex justify-end gap-2"><Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button><Button onClick={submit} disabled={mutation.isPending || typesQuery.isLoading || itemsQuery.isLoading}>Registrar</Button></div>

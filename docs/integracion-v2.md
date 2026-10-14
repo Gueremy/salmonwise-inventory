@@ -2,7 +2,7 @@
 
 Estas dos ramas locales forman una sola entrega funcional:
 
-Backend compatible con esta entrega: `8a8c524f65f76213633e05a0226f12f7822a7ea0` en `feat/backend-v2-complete`. El commit frontend que contiene esta guía identifica la otra mitad de la entrega.
+Backend compatible con esta entrega: `dae8fe35d6a797d8ba8a90f2dc2d38970c3b8a92` en `feat/backend-v2-complete`. El commit frontend que contiene esta guía identifica la otra mitad de la entrega.
 
 | Repositorio | Rama local | Punto de partida |
 | --- | --- | --- |
@@ -23,9 +23,15 @@ El frontend apunta al backend mediante `VITE_API_BASE_URL` (por defecto `http://
 
 ## Verificación local
 
-Desde el frontend: `npm run build`, `npx tsc --noEmit -p tsconfig.app.json`, `npm run lint` y `npm run test`. Desde el backend: `pytest -q tests` con variables de prueba. La revisión actual pasó 15 pruebas frontend, 151 backend y 6 PostgreSQL. Lint conserva diez advertencias de Fast Refresh en componentes UI, sin errores.
+Desde el frontend: `npm run build`, `npx tsc --noEmit -p tsconfig.app.json`, `npm run lint` y `npm run test`. Desde el backend: `pytest -q tests` con variables de prueba. La revisión actual pasó 17 pruebas frontend, 151 backend y 7 PostgreSQL. Lint conserva diez advertencias de Fast Refresh en componentes UI, sin errores.
 
-Se levantaron ambos servicios con PostgreSQL migrado desde cero. `scripts/smoke-integration.py` comprueba ingreso y ocho pantallas en escritorio (1440 px) y móvil (390 px), sin errores JavaScript ni respuestas API de error. Requiere Playwright, Chromium y una cuenta de QA con permisos, suministrada mediante `SALMO_QA_EMAIL`/`SALMO_QA_PASSWORD`. Este smoke verifica navegación y consultas; queda pendiente automatizar en navegador las mutaciones, desconexión/reapertura, expiración de sesión y escaneo físico. La adaptación visual completa a organizaciones genéricas también requiere revisión.
+Se levantaron ambos servicios con PostgreSQL migrado desde cero. `scripts/smoke-integration.py` comprueba ingreso y ocho pantallas en escritorio (1440 px) y móvil (390 px), sin errores JavaScript ni respuestas API de error. Requiere Playwright, Chromium y una cuenta de QA con permisos, suministrada mediante `SALMO_QA_EMAIL`/`SALMO_QA_PASSWORD`. Este smoke verifica navegación y consultas.
+
+`scripts/flow-integration.py` completa una entrada online, guarda un movimiento offline, comprueba la cola tras recargar, sincroniza, envía un lote mixto aceptado/rechazado, prueba ingreso manual del código QR y cierra la sesión al recibir un 401. Usa las mismas variables de cuenta QA y `SALMO_QA_LOCATION_CODE` si el código de ubicación difiere de `RACK-A-01`. `scripts/accessibility-audit.py` ejecuta axe-core para WCAG 2.1 A/AA sobre nueve estados de pantallas, incluidos diálogos y vistas de 390 px; el último resultado fue cero infracciones. La paleta de estados configurada por la organización se aplica a los componentes de inventario; etiquetas y textos genéricos ya no dependen de una empresa concreta.
+
+En pantallas pequeñas, la navegación se abre desde el encabezado y deja el ancho completo al contenido; el smoke móvil recorre el menú y comprueba que la página no desborde horizontalmente.
+
+Quedan la lectura con cámara en dispositivos físicos, contraste con paletas de clientes reales, aislamiento visual entre cuentas distintas, y pruebas de operación bajo despliegue y datos de producción. El smoke de carga backend en QA no acredita capacidad de producción.
 
 ## Configuración conjunta
 

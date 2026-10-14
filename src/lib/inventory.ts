@@ -44,11 +44,11 @@ export interface InventorySnapshot {
 }
 
 export const estadoColor: Record<EstadoContainer, string> = {
-  disponible: "#22C55E",
-  medio: "#EAB308",
-  critico: "#EF4444",
-  mantenimiento: "#9CA3AF",
-  cuarentena: "#8B5CF6",
+  disponible: "hsl(var(--status-disponible))",
+  medio: "hsl(var(--status-medio))",
+  critico: "hsl(var(--status-critico))",
+  mantenimiento: "hsl(var(--status-mantenimiento))",
+  cuarentena: "hsl(var(--status-cuarentena))",
 };
 
 export const estadoLabel: Record<EstadoContainer, string> = {

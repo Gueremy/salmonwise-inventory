@@ -136,8 +136,9 @@ export default function ImportWizard() {
       <div className="bg-card border border-border rounded-lg p-6 space-y-5 shadow-sm">
         <div className="grid grid-cols-1 gap-4">
           <div className="space-y-2">
-            <Label>Archivo de inventario (CSV o Excel)</Label>
+            <Label htmlFor="inventory-file">Archivo de inventario (CSV o Excel)</Label>
             <input
+              id="inventory-file"
               type="file"
               accept=".csv,.xlsx"
               onChange={handleFileChange}

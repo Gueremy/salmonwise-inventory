@@ -1,5 +1,7 @@
 import { createContext, useContext, useEffect, useState, ReactNode, useMemo } from "react";
 import { Organization, DEFAULT_THRESHOLDS, DEFAULT_THEME } from "../domain/organization";
+import { registerUnauthorizedHandler } from "@/api/client";
+import { applyOrganizationPalette } from "@/domain/theme";
 
 export type Rol = string;
 
@@ -167,6 +169,15 @@ export const RoleProvider = ({ children }: { children: ReactNode }) => {
     setOrganizacion(DEFAULT_ORGANIZATION);
     setModulosActivos(["offline_sync", "importacion", "fefo"]);
   };
+
+  useEffect(() => registerUnauthorizedHandler((requestToken) => {
+    // Una respuesta tardía de la cuenta anterior no debe cerrar la sesión nueva.
+    if (requestToken && requestToken === accessToken) logout();
+  }), [accessToken]);
+
+  useEffect(() => {
+    applyOrganizationPalette(organizacion.configuracion.colores);
+  }, [organizacion.configuracion.colores]);
 
   const userPermissions = useMemo(() => {
     if (usuario.permisos) {

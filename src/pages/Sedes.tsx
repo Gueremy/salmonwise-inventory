@@ -2,10 +2,12 @@ import { Link } from "react-router-dom";
 import { Ship, Factory, Warehouse, Bell, ArrowRight } from "lucide-react";
 import { ocupacionToEstado, estadoColor } from "@/lib/inventory";
 import { useInventorySnapshot } from "@/hooks/use-inventory-snapshot";
+import { useRole } from "@/context/RoleContext";
 
 const tipoIcon = { embarcacion: Ship, planta: Factory, bodega: Warehouse };
 
 export default function Sedes() {
+  const { organizacion } = useRole();
   const inventoryQuery = useInventorySnapshot();
   const sedes = inventoryQuery.data?.sedes ?? [];
   const galpones = inventoryQuery.data?.galpones ?? [];
@@ -16,10 +18,10 @@ export default function Sedes() {
     <div className="p-6 animate-fade-in">
       <div className="mb-6">
         <p className="text-sm text-muted-foreground">
-          Vista global de las sedes de Skretting Los Lagos.
+          Vista global de los sitios de {organizacion.nombre}.
         </p>
         <p className="text-xs text-muted-foreground mt-1">
-          {inventoryQuery.isSuccess ? "Datos live desde FastAPI" : inventoryQuery.isError ? "No se pudieron cargar datos desde la API" : "Cargando datos live"}
+          {inventoryQuery.isSuccess ? "Datos actualizados desde la API" : inventoryQuery.isError ? "No se pudieron cargar datos desde la API" : "Cargando datos"}
         </p>
       </div>
 

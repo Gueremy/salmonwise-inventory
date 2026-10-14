@@ -4,6 +4,7 @@ import { createMappingProfile, fetchInconsistencies, fetchMappingProfiles, fetch
 import { fetchItems } from "@/api/items";
 import { resolveAlert } from "@/api/alerts";
 import { fetchManagementSummary } from "@/api/management";
+import { apiFetch, registerUnauthorizedHandler } from "@/api/client";
 
 const fetchMock = vi.fn();
 const json = (data: unknown) => new Response(JSON.stringify(data), {
@@ -89,6 +90,15 @@ describe("contratos API v2 compartidos con backend", () => {
     const summary = await fetchManagementSummary("token");
     expect(summary.top_items).toEqual([]);
     expect(fetchMock.mock.calls[0][0]).toContain("/api/v2/dashboard/gerencia");
+  });
+
+  it("avisa qué sesión recibió 401 para cerrar sólo la cuenta afectada", async () => {
+    const unauthorized = vi.fn();
+    const unregister = registerUnauthorizedHandler(unauthorized);
+    fetchMock.mockResolvedValueOnce(new Response(JSON.stringify({ detail: "Caducada" }), { status: 401 }));
+    await expect(apiFetch("/api/v2/sesion", { token: "expired-token" })).rejects.toThrow("Caducada");
+    expect(unauthorized).toHaveBeenCalledWith("expired-token");
+    unregister();
   });
 
   it("previsualiza Excel y reutiliza perfiles de mapeo del backend", async () => {

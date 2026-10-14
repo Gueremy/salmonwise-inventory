@@ -6,7 +6,7 @@ const ranges: Record<EstadoContainer, string> = {
   medio: "41–79%",
   critico: "80–100%",
   mantenimiento: "manual",
-  cuarentena: "SERNAPESCA",
+  cuarentena: "retenido",
 };
 
 export const StatusLegend = () => (

@@ -23,7 +23,7 @@
     --secondary-foreground: 0 0% 100%;
 
     --muted: 214 32% 93%;
-    --muted-foreground: 220 9% 46%;       /* #6B7280 */
+    --muted-foreground: 220 9% 35%;
 
     --accent: 205 71% 38%;
     --accent-foreground: 0 0% 100%;
@@ -52,7 +52,7 @@
     /* Sidebar */
     --sidebar-background: 205 78% 22%;
     --sidebar-foreground: 0 0% 95%;
-    --sidebar-primary: 205 71% 50%;
+    --sidebar-primary: 205 71% 35%;
     --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-accent: 205 71% 30%;
     --sidebar-accent-foreground: 0 0% 100%;

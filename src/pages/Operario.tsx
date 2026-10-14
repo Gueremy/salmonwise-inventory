@@ -67,7 +67,7 @@ export default function Operario() {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <OfflineStatusIndicator />
+            <OfflineStatusIndicator onDark />
             <button
               onClick={() => {
                 logout();
@@ -98,7 +98,7 @@ export default function Operario() {
             icon={ArrowDownToLine}
             label="Registrar Entrada"
             onClick={() => openMovementForm("entrada_proveedor")}
-            color="bg-status-disponible"
+            color="bg-primary"
             disabled={!canCreateMovements}
           />
           <ActionButton
@@ -119,7 +119,7 @@ export default function Operario() {
             icon={QrCode}
             label="Escanear QR"
             onClick={() => setOpenQr(true)}
-            color="bg-status-cuarentena"
+            color="bg-primary"
           />
         </div>
 

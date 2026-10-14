@@ -146,19 +146,20 @@ export const QrScannerModal = ({ open, onOpenChange, onCodeScanned }: Props) => 
                 {cameraError && <p className="absolute bottom-1 left-2 right-2 text-xs text-white bg-black/70 p-1">{cameraError}</p>}
               </>
             ) : (
-              <div className="p-4 text-center text-muted-foreground space-y-2">
+              <div className="p-4 text-center text-white/90 space-y-2">
                 <VideoOff className="h-8 w-8 mx-auto opacity-50" />
                 <p className="text-xs">{cameraError ?? "Cámara no disponible"}</p>
-                <p className="text-[11px] text-muted-foreground/80">Puedes ingresar el código manualmente abajo.</p>
+                <p className="text-[11px] text-white/85">Puedes ingresar el código manualmente abajo.</p>
               </div>
             )}
           </div>
 
           {/* Formulario de ingreso manual */}
           <form onSubmit={handleManualSubmit} className="space-y-2 pt-2 border-t border-border">
-            <Label className="text-xs">Código manual (Ubicación o Ítem)</Label>
+            <Label htmlFor="qr-manual-code" className="text-xs">Código manual (Ubicación o Ítem)</Label>
             <div className="flex gap-2">
               <Input
+                id="qr-manual-code"
                 value={manualCode}
                 onChange={(e) => setManualCode(e.target.value)}
                 placeholder="Ej: G1-C01, U-102, LOTE-90"

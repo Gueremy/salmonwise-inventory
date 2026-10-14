@@ -9,7 +9,7 @@ import { syncAllPending } from "@/offline/syncEngine";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
 
-export const OfflineStatusIndicator = () => {
+export const OfflineStatusIndicator = ({ onDark = false }: { onDark?: boolean }) => {
   const { accessToken, online, setOnline, organizacion, usuario } = useRole();
   const queryClient = useQueryClient();
   const [pendingCount, setPendingCount] = useState(0);
@@ -110,9 +110,10 @@ export const OfflineStatusIndicator = () => {
       <div
         className={`flex items-center gap-1.5 text-xs font-medium px-2.5 py-1.5 rounded-md transition ${
           online
-            ? "bg-status-disponible/10 text-status-disponible border border-status-disponible/20"
-            : "bg-status-medio/10 text-status-medio border border-status-medio/20"
+            ? "bg-status-disponible/10 border border-status-disponible/20"
+            : "bg-status-medio/10 border border-status-medio/20"
         }`}
+        style={{ color: onDark ? "#ffffff" : online ? "hsl(var(--status-disponible-text))" : "hsl(var(--status-medio-text))" }}
       >
         {online ? <Wifi className="h-3.5 w-3.5" /> : <WifiOff className="h-3.5 w-3.5" />}
         <span>{online ? "ONLINE" : "OFFLINE"}</span>

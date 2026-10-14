@@ -1,9 +1,12 @@
 export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000";
 
-let onUnauthorizedHandler: (() => void) | null = null;
+let onUnauthorizedHandler: ((token: string | null | undefined) => void) | null = null;
 
-export function registerUnauthorizedHandler(handler: () => void) {
+export function registerUnauthorizedHandler(handler: (token: string | null | undefined) => void) {
   onUnauthorizedHandler = handler;
+  return () => {
+    if (onUnauthorizedHandler === handler) onUnauthorizedHandler = null;
+  };
 }
 
 export interface RequestOptions extends RequestInit {
@@ -50,7 +53,7 @@ export async function apiFetch<T>(endpoint: string, options: RequestOptions = {}
   });
 
   if (response.status === 401) {
-    onUnauthorizedHandler?.();
+    onUnauthorizedHandler?.(token);
   }
 
   if (!response.ok) {
