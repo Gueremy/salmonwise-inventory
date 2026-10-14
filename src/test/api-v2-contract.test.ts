@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { approveMovement, createMovement, rejectMovement } from "@/api/movements";
 import { fetchInconsistencies, fetchSupervisorKpis, uploadReconciliationFile } from "@/api/reconciliation";
 import { fetchItems } from "@/api/items";
+import { resolveAlert } from "@/api/alerts";
 
 const fetchMock = vi.fn();
 const json = (data: unknown) => new Response(JSON.stringify(data), {
@@ -73,5 +74,12 @@ describe("contratos API v2 compartidos con backend", () => {
     fetchMock.mockResolvedValueOnce(json({ items: [{ id: "last" }], total: 101, pages: 2 }));
     expect((await fetchItems("token")).map((item) => item.id)).toEqual(["first", "last"]);
     expect(fetchMock.mock.calls[1][0]).toContain("page=2");
+  });
+
+  it("resuelve una alerta de sincronización desde el endpoint v2", async () => {
+    fetchMock.mockResolvedValueOnce(json({ id: "alert-1", estado: "resuelta" }));
+    await resolveAlert("token", "alert-1");
+    expect(fetchMock.mock.calls[0][0]).toContain("/api/v2/alertas/alert-1/resolver");
+    expect(fetchMock.mock.calls[0][1].method).toBe("PATCH");
   });
 });

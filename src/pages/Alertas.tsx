@@ -1,10 +1,12 @@
 import { useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AlertTriangle, AlertCircle, Info, ExternalLink } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useRole } from "@/context/RoleContext";
 import { ApiAlerta, fetchAlertasActivas } from "@/lib/api";
+import { resolveAlert } from "@/api/alerts";
+import { toast } from "sonner";
 
 const severityConfig = {
   critica: { titulo: "Criticas", bg: "bg-destructive/5 border-destructive/30", text: "text-destructive", icon: AlertCircle },
@@ -28,11 +30,22 @@ function groupAlertas(alertas: ApiAlerta[]) {
 }
 
 export default function Alertas() {
-  const { accessToken } = useRole();
+  const { accessToken, can } = useRole();
+  const queryClient = useQueryClient();
+  const canResolveOfflineAlert = can("movimiento:approve");
+  const resolveMutation = useMutation({
+    mutationFn: (id: string) => resolveAlert(accessToken!, id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["alertas-activas"] });
+      toast.success("Alerta resuelta");
+    },
+    onError: (error) => toast.error(error instanceof Error ? error.message : "No se pudo resolver la alerta"),
+  });
   const alertasQuery = useQuery({
     queryKey: ["alertas-activas", accessToken],
     enabled: Boolean(accessToken),
     retry: false,
+    refetchInterval: 15000,
     queryFn: () => fetchAlertasActivas(accessToken!),
   });
   const grupos = useMemo(() => groupAlertas(alertasQuery.data ?? []), [alertasQuery.data]);
@@ -77,14 +90,26 @@ export default function Alertas() {
                   <div className="text-sm">
                     <div className="font-medium">{alerta.descripcion}</div>
                     <div className="text-xs text-muted-foreground mt-0.5">
-                      {alerta.tipo} · ubicación {alerta.id_container || "sin ubicación"} · {formatDate(alerta.fecha_generacion)}
+                      {alerta.tipo === "sincronizacion_offline_rechazada" ? "Sincronización offline" : alerta.tipo}
+                      {alerta.id_container ? ` · ubicación ${alerta.id_container}` : ""} · {formatDate(alerta.fecha_generacion)}
                     </div>
+                    {alerta.tipo === "sincronizacion_offline_rechazada" && (
+                      <div className="text-xs text-muted-foreground mt-1">El operario puede revisar el motivo en el indicador de sincronización de su dispositivo.</div>
+                    )}
                   </div>
-                  <Button asChild variant="outline" size="sm" className="shrink-0">
-                    <Link to={`/inventario`}>
-                      <ExternalLink className="h-3.5 w-3.5 mr-1" /> Ver inventario
-                    </Link>
-                  </Button>
+                  {alerta.tipo === "sincronizacion_offline_rechazada" && canResolveOfflineAlert && (
+                    <Button variant="outline" size="sm" className="shrink-0" disabled={resolveMutation.isPending}
+                      onClick={() => resolveMutation.mutate(alerta.id)}>
+                      Resolver
+                    </Button>
+                  )}
+                  {alerta.tipo !== "sincronizacion_offline_rechazada" && (
+                    <Button asChild variant="outline" size="sm" className="shrink-0">
+                      <Link to="/inventario">
+                        <ExternalLink className="h-3.5 w-3.5 mr-1" /> Ver inventario
+                      </Link>
+                    </Button>
+                  )}
                 </div>
               ))}
             </div>

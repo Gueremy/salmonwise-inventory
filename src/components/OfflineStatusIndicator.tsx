@@ -36,6 +36,7 @@ export const OfflineStatusIndicator = () => {
         else toast.success(`Sincronización completa: ${res.sincronizados} movimientos recibidos por el servidor.`);
         queryClient.invalidateQueries({ queryKey: ["movimientos"] });
         queryClient.invalidateQueries({ queryKey: ["inventory-snapshot"] });
+        queryClient.invalidateQueries({ queryKey: ["alertas-activas"] });
       }
       await checkPending();
     } catch (err) {
