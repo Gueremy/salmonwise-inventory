@@ -23,14 +23,17 @@ export const QrScannerModal = ({ open, onOpenChange, onCodeScanned }: Props) => 
   useEffect(() => {
     if (!open) {
       stopCamera();
+      setHasCamera(null);
       setManualCode("");
       setCameraError(null);
       return;
     }
 
-    startCamera();
+    let cancelled = false;
+    void startCamera(() => cancelled);
 
     return () => {
+      cancelled = true;
       stopCamera();
     };
   }, [open]);
@@ -45,7 +48,17 @@ export const QrScannerModal = ({ open, onOpenChange, onCodeScanned }: Props) => 
       setCameraError("El escaneo automático no está disponible en este navegador. Usa el código manual.");
       return;
     }
-    const detector = new DetectorClass({ formats: ["qr_code", "ean_13", "code_128"] });
+    let detector: Detector;
+    try {
+      detector = new DetectorClass({ formats: ["qr_code", "ean_13", "code_128"] });
+    } catch {
+      try {
+        detector = new DetectorClass({ formats: ["qr_code"] });
+      } catch {
+        setCameraError("El escaneo automático no está disponible en este navegador. Usa el código manual.");
+        return;
+      }
+    }
     let active = true;
     const scan = async () => {
       if (!active) return;
@@ -72,7 +85,7 @@ export const QrScannerModal = ({ open, onOpenChange, onCodeScanned }: Props) => 
     };
   }, [open, hasCamera, onCodeScanned, onOpenChange]);
 
-  const startCamera = async () => {
+  const startCamera = async (isCancelled: () => boolean) => {
     if (!navigator.mediaDevices?.getUserMedia) {
       setHasCamera(false);
       setCameraError("La API de cámara no está disponible en este navegador o entorno.");
@@ -83,6 +96,10 @@ export const QrScannerModal = ({ open, onOpenChange, onCodeScanned }: Props) => 
       const stream = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: "environment" },
       });
+      if (isCancelled()) {
+        stream.getTracks().forEach((track) => track.stop());
+        return;
+      }
       streamRef.current = stream;
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
@@ -90,6 +107,7 @@ export const QrScannerModal = ({ open, onOpenChange, onCodeScanned }: Props) => 
       setHasCamera(true);
       setCameraError(null);
     } catch (err) {
+      if (isCancelled()) return;
       setHasCamera(false);
       setCameraError("Permiso de cámara denegado o dispositivo sin cámara disponible.");
     }

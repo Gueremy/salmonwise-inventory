@@ -1,5 +1,4 @@
 import { API_BASE_URL } from "./client";
-import { zipSync } from "fflate";
 
 export interface ReportDownloadResult {
   blob: Blob;
@@ -34,9 +33,9 @@ export async function downloadReport(
     params.set("size", "10000");
     params.set("page", "1");
   }
-  const fetchPage = async () => {
+  const fetchPage = async (path = endpoint) => {
     const queryString = params.toString();
-    const response = await fetch(`${API_BASE_URL}${endpoint}${queryString ? `?${queryString}` : ""}`, {
+    const response = await fetch(`${API_BASE_URL}${path}${queryString ? `?${queryString}` : ""}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     if (!response.ok) {
@@ -45,33 +44,24 @@ export async function downloadReport(
     }
     return response;
   };
-  const response = await fetchPage();
+  let response = await fetchPage();
 
   const total = Number(response.headers.get("x-export-total") ?? 0);
   if (kind !== "sernapesca" && total > 10000) {
-    const files: Record<string, Uint8Array> = {};
-    files[`pagina-001.${extension}`] = new Uint8Array(await response.arrayBuffer());
-    for (let page = 2; page <= Math.ceil(total / 10000); page++) {
-      params.set("page", String(page));
-      const next = await fetchPage();
-      if (Number(next.headers.get("x-export-total")) !== total) {
-        throw new Error("Los datos cambiaron durante la exportación. Vuelve a generar el reporte.");
-      }
-      files[`pagina-${String(page).padStart(3, "0")}.${extension}`] = new Uint8Array(await next.arrayBuffer());
+    params.delete("page");
+    response = await fetchPage(`${endpoint}/completo`);
+    if (response.headers.get("content-type")?.split(";")[0] !== "application/zip") {
+      throw new Error("El servidor no entregó el archivo completo");
     }
-    const archive = zipSync(files, { level: 0 });
-    const buffer = archive.slice().buffer;
-    return {
-      blob: new Blob([buffer], { type: "application/zip" }),
-      filename: `reporte-${resource}-completo.zip`,
-      sha256: await sha256FromArrayBuffer(buffer),
-    };
   }
 
   const buffer = await response.arrayBuffer();
   const sha256 = await sha256FromArrayBuffer(buffer);
   const blob = new Blob([buffer], { type: response.headers.get("content-type") ?? "application/octet-stream" });
-  const filename = filenameFromDisposition(response.headers.get("content-disposition"), `reporte.${extension}`);
+  const filename = filenameFromDisposition(
+    response.headers.get("content-disposition"),
+    total > 10000 && kind !== "sernapesca" ? `reporte-${resource}-completo.zip` : `reporte.${extension}`,
+  );
 
   return { blob, filename, sha256 };
 }

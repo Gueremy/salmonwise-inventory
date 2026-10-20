@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import Login from "@/pages/Login";
 import { RoleProvider } from "@/context/RoleContext";
 
@@ -16,11 +17,13 @@ vi.mock("@/lib/api", () => ({
 
 function renderLogin() {
   return render(
-    <MemoryRouter>
-      <RoleProvider>
-        <Login />
-      </RoleProvider>
-    </MemoryRouter>,
+    <QueryClientProvider client={new QueryClient()}>
+      <MemoryRouter>
+        <RoleProvider>
+          <Login />
+        </RoleProvider>
+      </MemoryRouter>
+    </QueryClientProvider>,
   );
 }
 

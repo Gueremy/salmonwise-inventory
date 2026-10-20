@@ -1,8 +1,8 @@
 # Integración SalmoTrack v2: frontend y backend
 
-Estas dos ramas locales forman una sola entrega funcional:
+Estas dos ramas forman una sola entrega funcional:
 
-Backend compatible con esta entrega: `15cd776cd541a71ce03b752e7fe7c06c33893efc` en `feat/backend-v2-complete`. El commit frontend que contiene esta guía identifica la otra mitad de la entrega.
+Backend compatible con esta entrega: `1a16a0594de196e760d238f3c2ae373135f99b3c` en `feat/backend-v2-complete`. El commit frontend que contiene esta guía identifica la otra mitad.
 
 | Repositorio | Rama local | Punto de partida |
 | --- | --- | --- |
@@ -18,12 +18,12 @@ El frontend apunta al backend mediante `VITE_API_BASE_URL` (por defecto `http://
 - Offline: las operaciones se separan por organización y usuario, se envían en lotes de hasta 100 y conservan su UUID idempotente. Un fallo de red devuelve el lote a pendiente. Un rechazo de negocio se muestra con su motivo y no se reintenta automáticamente. La respuesta `pendiente` significa recibida por el servidor y pendiente de aprobación, no aplicada al stock.
 - Importación y conciliación: CSV/XLSX se previsualizan mediante `/api/v2/importacion/previsualizar` con el parser del servidor. Los perfiles se guardan y seleccionan mediante `/api/v2/importacion/mapeos`. Conciliar recibe `file` y `mapeo_json` o `id_mapping_profile`.
 - Gerencia: `/api/v2/dashboard/gerencia` entrega movimientos confirmados diarios de los últimos 15 días y los cinco ítems con más movimientos, con aislamiento por organización/sitio. La ocupación es actual, sin historial inventado.
-- Exportación: los reportes operativos usan `/api/v2/exportaciones/{recurso}/{formato}`. Hasta 10 000 filas descargan un archivo; totales mayores descargan un ZIP con todas las páginas PDF/Excel. Un fallo intermedio o cambio de total cancela la descarga. La paginación no representa una instantánea: cambios que mantengan el total pueden alterar las filas; para exportaciones auditables debe ejecutarse sin escrituras concurrentes.
+- Exportación: los reportes operativos usan `/api/v2/exportaciones/{recurso}/{formato}`. Hasta 10 000 filas descargan un archivo; totales mayores usan `/completo` para recibir un ZIP paginado. El backend mantiene una transacción `REPEATABLE READ` durante la generación, por lo que cambios concurrentes no alteran las páginas. La descarga se materializa en disco temporal del servidor antes de enviarse y borra ese archivo al terminar.
 - Lectura QR: usa `BarcodeDetector` cuando el navegador lo admite y conserva entrada manual como alternativa.
 
 ## Verificación local
 
-Desde el frontend: `npm run build`, `npx tsc --noEmit -p tsconfig.app.json`, `npm run lint` y `npm run test`. Desde el backend: `pytest -q tests` con variables de prueba. La revisión actual pasó 17 pruebas frontend, 151 backend y 7 PostgreSQL. Lint conserva diez advertencias de Fast Refresh en componentes UI, sin errores.
+Desde el frontend: `npm run build`, `npx tsc --noEmit -p tsconfig.app.json`, `npm run lint` y `npm run test`. Desde el backend: `pytest -q tests` con variables de prueba. La revisión actual pasó 20 pruebas frontend, 152 backend y 8 PostgreSQL. Lint conserva diez advertencias de Fast Refresh en componentes UI, sin errores.
 
 Se levantaron ambos servicios con PostgreSQL migrado desde cero. `scripts/smoke-integration.py` comprueba ingreso y ocho pantallas en escritorio (1440 px) y móvil (390 px), sin errores JavaScript ni respuestas API de error. Requiere Playwright, Chromium y una cuenta de QA con permisos, suministrada mediante `SALMO_QA_EMAIL`/`SALMO_QA_PASSWORD`. Este smoke verifica navegación y consultas.
 
@@ -33,13 +33,15 @@ Con `SALMO_QA_EXTENDED=1`, el mismo script registra una salida, aprueba sus dos 
 
 En pantallas pequeñas, la navegación se abre desde el encabezado y deja el ancho completo al contenido; el smoke móvil recorre el menú y comprueba que la página no desborde horizontalmente.
 
-Quedan la lectura con cámara en dispositivos físicos, contraste con paletas de clientes reales, aislamiento visual entre cuentas distintas, y pruebas de operación bajo despliegue y datos de producción. El smoke de carga backend en QA no acredita capacidad de producción.
+El cierre de sesión borra la caché de consultas y restaura la paleta; una sesión local con organización ajena se descarta. Quedan la lectura con cámara en dispositivos físicos, contraste con paletas de clientes reales y pruebas con volumen y datos autorizados de operación. El smoke de carga backend en QA no acredita capacidad de producción.
 
 ## Configuración conjunta
 
 Backend: copiar `backend/.env.example`, configurar las dos URLs PostgreSQL y un `SECRET_KEY` propio, ejecutar `alembic upgrade head` y `uvicorn app.main:app --port 8000`. Incluir la URL exacta del frontend en `CORS_ORIGINS` y mantener un worker mientras el scheduler esté integrado.
 
 Frontend: copiar `.env.example`, establecer `VITE_API_BASE_URL` con esa API, instalar mediante `npm ci` y ejecutar `npm run dev`. La variable se incorpora al build; cambiarla requiere volver a compilar. Los módulos y permisos provienen de la sesión, no de variables del frontend.
+
+Para Windows, `deploy/windows/Install-SalmoTrackV2.ps1` instala ambas ramas en `%LOCALAPPDATA%\SalmoTrack-v2`, genera claves, ejecuta migraciones y verifica el ingreso. La guía está en `deploy/windows/README.md`. Se probó la composición en Linux de QA; la ejecución física en Windows queda pendiente.
 
 ## Entrega de eventos
 

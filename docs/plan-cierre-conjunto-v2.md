@@ -8,16 +8,16 @@
 
 - Gerencia usa agregados reales; se eliminaron tendencias y gráficas sintéticas.
 - CSV/XLSX tienen vista previa del servidor y perfiles de mapeo guardables/seleccionables.
-- Exportaciones superiores a 10 000 filas descargan todas las páginas en ZIP. Pendiente una instantánea consistente bajo escrituras concurrentes y ensayo de memoria con volumen real.
+- Exportaciones superiores a 10 000 filas descargan un ZIP generado en una sola transacción `REPEATABLE READ` de PostgreSQL. Una prueba inserta un ítem entre páginas y confirma que la instantánea no cambia. Pendiente ensayo de espacio y tiempo con volumen real.
 - Outbox transaccional para webhooks de movimientos e importación; rollback y deduplicación validados en PostgreSQL.
-- Migraciones verificadas, 151 pruebas backend, 7 PostgreSQL y 17 frontend; TypeScript, lint sin errores y build pasan.
+- Migraciones verificadas, 152 pruebas backend, 8 PostgreSQL y 20 frontend; TypeScript, lint sin errores y build pasan.
 - Smoke de ingreso y ocho pantallas pasa a 1440 y 390 px, sin errores JavaScript/API; script reproducible en `scripts/smoke-integration.py`.
 - El flujo de navegador real cubre entrada online, cola offline tras recarga, sincronización, lote mixto aceptado/rechazado, QR manual y sesión expirada. Axe-core pasó nueve estados de pantalla WCAG 2.1 A/AA sin infracciones.
 - La navegación móvil usa un menú en el encabezado; el smoke de 390 px comprobó navegación y ausencia de desborde horizontal.
 - La prueba extendida en navegador cubre salida con dos etapas de aprobación y traslado confirmado en el libro de movimientos.
 - PostgreSQL valida un mismo UUID y una regla de alerta bajo solicitudes simultáneas. Carga local: 100 lecturas de dos rutas con 10 concurrentes, sin fallos (p95 238,2 y 53,1 ms).
 
-**El plan completo aún no está cerrado.** Quedan QR con cámara en dispositivos reales, aislamiento visual entre cuentas, contraste de paletas reales, carga representativa de producción, migración/rollback con datos autorizados y conectores reales. Los porcentajes meta no se acreditan sólo con el smoke.
+Se añadió un instalador Windows con Docker Compose y se arrancó la misma composición en QA con PostgreSQL limpio; ingreso, sesión, exportación y ocho pantallas en escritorio/móvil respondieron correctamente. El cierre de sesión limpia la caché y la paleta de la cuenta anterior; el lector QR apaga una cámara cuyo permiso llega tras cerrar el diálogo. **El plan completo aún no está cerrado:** quedan QR con cámara en dispositivos reales, contraste con paletas de clientes reales, carga y tamaño de exportación representativos, migración/rollback con datos autorizados, conectores reales y revisión de avisos de dependencias antes de exponerlo fuera de localhost.
 
 ## Fase 0 — Fijar la versión conjunta
 
@@ -61,4 +61,4 @@
 3. Hacer revisión cruzada de los dos commits finales y registrar las versiones compatibles en la guía de integración.
 4. **Después** publicar las ramas de cierre en GitHub y abrir revisiones enlazadas: `feat/backend-v2-complete` en `Gueremy/AXIOUS` y `feat/frontend-v2-integration-fixes` en `Gueremy/salmonwise-inventory`. Confirmar el destino remoto antes de cada push: la copia backend apunta actualmente a un repositorio local como `origin`. No sobrescribir `feat/backend-v2`, `main` ni el directorio original de AXIOUS, ni usar force push.
 
-El backend publicado previamente (`feat/backend-v2`) contiene la base, pero los cambios de cierre y la novena alerta siguen en `feat/backend-v2-complete`. El frontend de cierre también sigue local. Por ello el push final comprende **dos ramas**, aunque una base backend ya estuviera publicada.
+Las ramas de cierre se publicaron por separado y se despliegan juntas. El instalador usa esas ramas en una carpeta nueva, sin modificar el proyecto original de AXIOUS ni la base de datos previa del usuario.

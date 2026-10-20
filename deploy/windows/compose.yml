@@ -1,0 +1,75 @@
+name: salmotrack-v2
+
+x-backend: &backend
+  image: salmotrack-v2-api:local
+  build:
+    context: ../../../AXIOUS-v2-complete/backend
+  environment: &backend-env
+    DATABASE_URL: postgresql+asyncpg://salmo:${SALMO_DB_PASSWORD:?Falta SALMO_DB_PASSWORD}@db:5432/salmotrack
+    DATABASE_URL_SYNC: postgresql+psycopg2://salmo:${SALMO_DB_PASSWORD}@db:5432/salmotrack
+    SECRET_KEY: ${SALMO_SECRET_KEY:?Falta SALMO_SECRET_KEY}
+    ENVIRONMENT: production
+    CORS_ORIGINS: '["http://localhost:8080"]'
+    BASE_URL: http://localhost:8000
+
+services:
+  db:
+    image: postgres:17-bookworm
+    environment:
+      POSTGRES_DB: salmotrack
+      POSTGRES_USER: salmo
+      POSTGRES_PASSWORD: ${SALMO_DB_PASSWORD:?Falta SALMO_DB_PASSWORD}
+    volumes:
+      - salmo_db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U salmo -d salmotrack"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+    restart: unless-stopped
+
+  migrate:
+    <<: *backend
+    environment: *backend-env
+    command: ["alembic", "upgrade", "head"]
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
+
+  api:
+    <<: *backend
+    environment: *backend-env
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    ports:
+      - "127.0.0.1:8000:8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    restart: unless-stopped
+
+  web:
+    image: salmotrack-v2-web:local
+    build:
+      context: ../..
+      dockerfile: deploy/windows/Dockerfile.frontend
+      args:
+        VITE_API_BASE_URL: http://localhost:8000
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:8080:80"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "-", "http://localhost/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    restart: unless-stopped
+
+volumes:
+  salmo_db:

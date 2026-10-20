@@ -1,7 +1,8 @@
-import { createContext, useContext, useEffect, useState, ReactNode, useMemo } from "react";
+import { createContext, useContext, useEffect, useState, ReactNode, useMemo, useCallback } from "react";
 import { Organization, DEFAULT_THRESHOLDS, DEFAULT_THEME } from "../domain/organization";
 import { registerUnauthorizedHandler } from "@/api/client";
 import { applyOrganizationPalette } from "@/domain/theme";
+import { useQueryClient } from "@tanstack/react-query";
 
 export type Rol = string;
 
@@ -115,6 +116,7 @@ const STORAGE_TOKEN_KEY = "axious.accessToken";
 const STORAGE_ORG_KEY = "axious.org";
 
 export const RoleProvider = ({ children }: { children: ReactNode }) => {
+  const queryClient = useQueryClient();
   const [usuario, setUsuario] = useState<Usuario>(DEFAULT_USER);
   const [organizacion, setOrganizacion] = useState<Organization>(DEFAULT_ORGANIZATION);
   const [authenticated, setAuthenticated] = useState(false);
@@ -128,21 +130,21 @@ export const RoleProvider = ({ children }: { children: ReactNode }) => {
     const storedToken = localStorage.getItem(STORAGE_TOKEN_KEY);
     const storedOrg = localStorage.getItem(STORAGE_ORG_KEY);
 
-    if (storedUser && storedToken) {
-      const parsedUser = JSON.parse(storedUser) as Usuario;
-      setUsuario(parsedUser);
-      setAccessToken(storedToken);
-      setAuthenticated(true);
-      if (parsedUser.modulos_activos) {
-        setModulosActivos(parsedUser.modulos_activos);
-      }
-    }
-
-    if (storedOrg) {
+    if (storedUser && storedToken && storedOrg) {
       try {
-        setOrganizacion(JSON.parse(storedOrg) as Organization);
+        const parsedUser = JSON.parse(storedUser) as Usuario;
+        const parsedOrg = JSON.parse(storedOrg) as Organization;
+        if (parsedUser.id && parsedUser.id_organizacion === parsedOrg.id) {
+          setUsuario(parsedUser);
+          setAccessToken(storedToken);
+          setAuthenticated(true);
+          setOrganizacion(parsedOrg);
+          if (parsedUser.modulos_activos) {
+            setModulosActivos(parsedUser.modulos_activos);
+          }
+        }
       } catch {
-        // Ignorar si el formato es inválido
+        // Una sesión local incompleta no debe hidratar datos de otra cuenta.
       }
     }
 
@@ -162,18 +164,19 @@ export const RoleProvider = ({ children }: { children: ReactNode }) => {
     localStorage.removeItem(STORAGE_ORG_KEY);
   }, [authenticated, accessToken, usuario, organizacion]);
 
-  const logout = () => {
+  const logout = useCallback(() => {
+    queryClient.clear();
     setAuthenticated(false);
     setAccessToken(null);
     setUsuario(DEFAULT_USER);
     setOrganizacion(DEFAULT_ORGANIZATION);
     setModulosActivos(["offline_sync", "importacion", "fefo"]);
-  };
+  }, [queryClient]);
 
   useEffect(() => registerUnauthorizedHandler((requestToken) => {
     // Una respuesta tardía de la cuenta anterior no debe cerrar la sesión nueva.
     if (requestToken && requestToken === accessToken) logout();
-  }), [accessToken]);
+  }), [accessToken, logout]);
 
   useEffect(() => {
     applyOrganizationPalette(organizacion.configuracion.colores);
