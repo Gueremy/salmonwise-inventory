@@ -1,3 +1,4 @@
+import { useEvidenceMode, SensitiveText } from "@/privacy/EvidenceMode";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowRight } from "lucide-react";
@@ -6,8 +7,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { useRole } from "@/context/RoleContext";
-import { createMappingProfile, fetchMappingProfiles, ImportMapping, previewReconciliationFile, uploadReconciliationFile } from "@/api/reconciliation";
-import { toast } from "sonner";
+import { createMappingProfile, fetchLocationNaming, fetchMappingProfiles, ImportMapping, previewReconciliationFile, uploadReconciliationFile } from "@/api/reconciliation";
+import { toast } from "@/privacy/notifications";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 const suggestedMapping = (columns: string[]) => ({
@@ -29,6 +30,7 @@ const toImportMapping = (mapping: ReturnType<typeof suggestedMapping>): ImportMa
 });
 
 export default function ImportWizard() {
+  const { enabled: evidenceMode } = useEvidenceMode();
   const { accessToken } = useRole();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -43,6 +45,11 @@ export default function ImportWizard() {
     sitio: "",
     zona: "",
   });
+  const [aliases, setAliases] = useState<NonNullable<ImportMapping["__equivalencias"]>>({});
+  const [externalCode, setExternalCode] = useState("");
+  const [targetLocation, setTargetLocation] = useState("");
+  const namingQuery = useQuery({queryKey: ["location-naming", accessToken], enabled: Boolean(accessToken), queryFn: () => fetchLocationNaming(accessToken!)});
+  const mappingPayload = () => ({ ...toImportMapping(mapping), __equivalencias: aliases });
   const [processing, setProcessing] = useState(false);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [previewError, setPreviewError] = useState<string | null>(null);
@@ -85,7 +92,7 @@ export default function ImportWizard() {
     if (!accessToken || !profileName.trim() || !columns.length) return;
     setSavingProfile(true);
     try {
-      const saved = await createMappingProfile(accessToken, profileName.trim(), toImportMapping(mapping));
+      const saved = await createMappingProfile(accessToken, profileName.trim(), mappingPayload());
       await queryClient.invalidateQueries({ queryKey: ["import-mapping-profiles"] });
       setSelectedProfileId(saved.id);
       setProfileName("");
@@ -107,7 +114,7 @@ export default function ImportWizard() {
     setProcessing(true);
     try {
       const result = await uploadReconciliationFile(accessToken, file,
-        toImportMapping(mapping), selectedProfileId || undefined);
+        mappingPayload(), selectedProfileId || undefined);
       toast.success("Archivo importado y conciliado con éxito");
       navigate(`/reconciliation?job=${result.job.id}`);
     } catch (err) {
@@ -138,6 +145,7 @@ export default function ImportWizard() {
           <div className="space-y-2">
             <Label htmlFor="inventory-file">Archivo de inventario (CSV o Excel)</Label>
             <input
+              style={evidenceMode ? { color: "transparent" } : undefined}
               id="inventory-file"
               type="file"
               accept=".csv,.xlsx"
@@ -148,7 +156,7 @@ export default function ImportWizard() {
         </div>
 
         {previewLoading && <p className="text-xs text-muted-foreground">Leyendo archivo para previsualizarlo...</p>}
-        {previewError && <p role="alert" className="text-xs text-destructive">{previewError}</p>}
+        {previewError && <p role="alert" className="text-xs text-destructive"><SensitiveText category="Dato" value={previewError} /></p>}
 
         {columns.length > 0 && (
           <div className="space-y-4 pt-4 border-t border-border">
@@ -158,6 +166,7 @@ export default function ImportWizard() {
               <select value={selectedProfileId} onChange={(event) => {
                 const profile = profilesQuery.data?.find((item) => item.id === event.target.value);
                 setSelectedProfileId(event.target.value);
+                setAliases(profile?.mapeo.__equivalencias ?? {});
                 if (profile) setMapping({
                   ubicacion: profile.mapeo.codigo_ubicacion,
                   item: profile.mapeo.codigo_item,
@@ -168,7 +177,7 @@ export default function ImportWizard() {
                 });
               }} className="w-full h-9 rounded-md border border-input bg-background px-2 text-xs">
                 <option value="">Mapeo personalizado de esta importación</option>
-                {profilesQuery.data?.map((profile) => <option key={profile.id} value={profile.id}>{profile.nombre}</option>)}
+                {profilesQuery.data?.map((profile) => <option key={profile.id} value={profile.id}><SensitiveText category="Dato" value={profile.nombre} /></option>)}
               </select>
               {profilesQuery.isError && <p className="text-xs text-destructive">No se pudieron cargar los perfiles guardados.</p>}
             </div>
@@ -266,7 +275,7 @@ export default function ImportWizard() {
                     {previewRows.map((row, idx) => (
                       <tr key={idx} className="border-b border-border/50">
                         {columns.map((col) => (
-                          <td key={col} className="p-2 truncate max-w-[150px]">{row[col] ?? "-"}</td>
+                          <td key={col} className="p-2 truncate max-w-[150px]"><SensitiveText category="Dato" value={row[col] ?? "-"} /></td>
                         ))}
                       </tr>
                     ))}
@@ -277,6 +286,29 @@ export default function ImportWizard() {
           </div>
         )}
 
+        <div className="border rounded-md p-3 space-y-3 text-sm">
+          <h3 className="font-semibold">Códigos de ubicaciones del ERP</h3>
+          <p>La ruta física combina sede, bodega/sector y posición. Conserva los códigos como texto para mantener los ceros iniciales. Si una posición se repite, incluye sede y zona en el archivo.</p>
+          <p className="text-xs">Relaciona códigos externos con ubicaciones existentes. Las equivalencias se guardan con el perfil; los códigos originales del archivo se conservan.</p>
+          <div className="flex flex-wrap gap-2">
+            <Input aria-label="Código externo ERP" value={externalCode} onChange={(event) => setExternalCode(event.target.value)} placeholder="Código externo o SEDE|ZONA|CÓDIGO" />
+            <select aria-label="Ubicación física de destino" className="border rounded p-2 max-w-full" value={targetLocation} onChange={(event) => setTargetLocation(event.target.value)}>
+              <option value="">Selecciona ubicación física</option>
+              {namingQuery.data?.map((location) => <option key={location.id} value={location.id}>{location.ruta}</option>)}
+            </select>
+            <Button type="button" variant="outline" disabled={!externalCode.trim() || !targetLocation} onClick={() => {
+              const target = namingQuery.data?.find((location) => location.id === targetLocation);
+              if (!target) return;
+              setAliases((current) => ({ ...current, [externalCode.trim()]: { codigo_sitio: target.codigo_sitio, codigo_zona: target.codigo_zona, codigo_ubicacion: target.codigo_ubicacion } }));
+              setSelectedProfileId(""); setExternalCode("");
+            }}>Guardar equivalencia en el mapeo</Button>
+          </div>
+          {Object.entries(aliases).map(([external, target]) => <div key={external} className="flex gap-3 items-center">
+            <SensitiveText value={external} /> → <SensitiveText value={`${target.codigo_sitio}/${target.codigo_zona}/${target.codigo_ubicacion}`} />
+            <Button type="button" size="sm" variant="outline" onClick={() => {setAliases((current) => Object.fromEntries(Object.entries(current).filter(([key]) => key !== external))); setSelectedProfileId("");}}>Quitar</Button>
+          </div>)}
+          {namingQuery.isError && <p role="alert">No se pudo cargar el catálogo de ubicaciones para configurar equivalencias.</p>}
+        </div>
         <div className="flex justify-end gap-2 pt-4 border-t border-border">
           <Button variant="outline" onClick={() => navigate("/reconciliation")}>
             Cancelar

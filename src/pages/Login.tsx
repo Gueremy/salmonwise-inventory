@@ -1,5 +1,6 @@
+import { SensitiveText } from "@/privacy/EvidenceMode";
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { Box } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,6 +14,9 @@ const sedeLabel = (idSede: string | null) => idSede ?? "Global";
 
 export default function Login() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const requested = (location.state as {from?: string} | null)?.from;
+  const destination = requested?.startsWith("/") && !requested.startsWith("//") ? requested : null;
   const { setUsuario, setOrganizacion, setModulosActivos, setAuthenticated, setAccessToken, authenticated, setOnline } = useRole();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -22,9 +26,9 @@ export default function Login() {
 
   useEffect(() => {
     if (authenticated) {
-      navigate("/dashboard", { replace: true });
+      navigate(destination ?? "/dashboard", { replace: true });
     }
-  }, [authenticated, navigate]);
+  }, [authenticated, navigate, destination]);
 
   useEffect(() => {
     let cancelled = false;
@@ -87,10 +91,11 @@ export default function Login() {
         fecha_creacion: new Date().toISOString(),
       });
       setModulosActivos(session.modulos_activos);
+      localStorage.setItem("axious.refreshToken", tokens.refresh_token);
       setAccessToken(tokens.access_token);
       setAuthenticated(true);
       setOnline(true);
-      navigate(usuario.rol === "operario" ? "/operario" : usuario.rol === "gerencia" ? "/gerencia" : "/dashboard");
+      navigate(destination ?? (usuario.rol === "operario" ? "/operario" : usuario.rol === "gerencia" ? "/gerencia" : "/dashboard"));
     } catch (err) {
       setError(err instanceof Error ? err.message : "No se pudo iniciar sesion");
       setAuthenticated(false);
@@ -161,7 +166,7 @@ export default function Login() {
               </div>
               <div>Ingresa tus credenciales asignadas para acceder al sistema.</div>
             </div>
-            {error && <div className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">{error}</div>}
+            {error && <div className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive"><SensitiveText category="Dato" value={error} /></div>}
           </div>
 
           <Button

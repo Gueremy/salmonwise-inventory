@@ -1,3 +1,4 @@
+import { SensitiveText } from "@/privacy/EvidenceMode";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
@@ -19,7 +20,7 @@ import { useRole } from "@/context/RoleContext";
 import { fetchInconsistencies, fetchJobInconsistencies, fetchSupervisorKpis, InconsistencyItem } from "@/api/reconciliation";
 import { fetchLocationById } from "@/api/locations";
 import { downloadReport, ReportDownloadResult } from "@/api/reports";
-import { toast } from "sonner";
+import { toast } from "@/privacy/notifications";
 
 export default function ReconciliationDashboard() {
   const { accessToken } = useRole();
@@ -227,7 +228,7 @@ export default function ReconciliationDashboard() {
                     <span className="font-semibold text-sm">Ubicación {inc.ubicacion_codigo}</span>
                   )}
                 </div>
-                <p className="text-xs text-foreground/90">{inc.descripcion}</p>
+                <p className="text-xs text-foreground/90"><SensitiveText category="Dato" value={inc.descripcion} /></p>
                 <div className="text-[10px] text-muted-foreground">
                   Detectado el {new Date(inc.fecha_deteccion).toLocaleDateString("es-CL")}
                 </div>
@@ -263,7 +264,7 @@ export default function ReconciliationDashboard() {
           <div className="flex items-center gap-2 font-semibold text-sm">
             <Fingerprint className="h-4 w-4 text-primary" /> Integridad criptográfica SHA-256
           </div>
-          <div className="text-xs text-muted-foreground">{lastReport.filename}</div>
+          <div className="text-xs text-muted-foreground"><SensitiveText category="Dato" value={lastReport.filename} /></div>
           <code className="block break-all rounded-md bg-muted px-3 py-2 text-xs font-mono">
             {lastReport.sha256}
           </code>

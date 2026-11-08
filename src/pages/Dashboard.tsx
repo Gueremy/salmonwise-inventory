@@ -1,3 +1,4 @@
+import { SensitiveText } from "@/privacy/EvidenceMode";
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis, Cell } from "recharts";
@@ -5,7 +6,7 @@ import { Box, Bell, Package, MapPin, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
-import { toast } from "sonner";
+import { toast } from "@/privacy/notifications";
 import { useRole } from "@/context/RoleContext";
 import {
   ApiAlerta,
@@ -237,7 +238,7 @@ export default function Dashboard() {
               <div key={alerta.id} className="flex gap-3 p-3 rounded-md bg-muted/40">
                 <span className={`h-2 w-2 rounded-full mt-1.5 shrink-0 ${alertColor(alerta.severidad)}`} />
                 <div className="min-w-0">
-                  <div className="text-sm">{alerta.descripcion}</div>
+                  <div className="text-sm"><SensitiveText category="Dato" value={alerta.descripcion} /></div>
                   <div className="text-xs text-muted-foreground mt-0.5">{formatDate(alerta.fecha_generacion)}</div>
                 </div>
               </div>
@@ -283,9 +284,9 @@ export default function Dashboard() {
                 {pendingItems.map((movement, index) => (
                   <tr key={movement.id} className="border-t border-border hover:bg-muted/30 transition">
                     <td className="px-5 py-3 text-muted-foreground">{index + 1}</td>
-                    <td className="px-5 py-3 font-medium">{movement.producto_nombre}</td>
+                    <td className="px-5 py-3 font-medium"><SensitiveText category="Dato" value={movement.producto_nombre} /></td>
                     <td className="px-5 py-3 capitalize text-muted-foreground">{prettyType(movement.tipo)}</td>
-                    <td className="px-5 py-3">{movement.operario_nombre}</td>
+                    <td className="px-5 py-3"><SensitiveText category="Persona" value={movement.operario_nombre} /></td>
                     <td className="px-5 py-3">{movement.galpon_codigo}</td>
                     <td className="px-5 py-3 text-muted-foreground">{formatDate(movement.fecha_hora)}</td>
                     <td className="px-5 py-3 text-right space-x-2">

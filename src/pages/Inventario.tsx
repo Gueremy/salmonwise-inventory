@@ -1,3 +1,4 @@
+import { SensitiveText } from "@/privacy/EvidenceMode";
 import { Link } from "react-router-dom";
 import { Boxes } from "lucide-react";
 import { ocupacionToEstado, estadoColor } from "@/lib/inventory";
@@ -35,7 +36,7 @@ export default function Inventario() {
             >
               <div className="flex items-center gap-2 mb-3">
                 <Boxes className="h-5 w-5 text-primary" />
-                <h3 className="font-semibold">{sede.nombre}</h3>
+                <h3 className="font-semibold"><SensitiveText category="Dato" value={sede.nombre} /></h3>
               </div>
               <div className="flex gap-1.5 mt-2">
                 {sedeGalpones.map((galpon) => {

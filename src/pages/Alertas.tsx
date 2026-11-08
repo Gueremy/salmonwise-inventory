@@ -1,3 +1,4 @@
+import { SensitiveText } from "@/privacy/EvidenceMode";
 import { useMemo } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AlertTriangle, AlertCircle, Info, ExternalLink } from "lucide-react";
@@ -6,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { useRole } from "@/context/RoleContext";
 import { ApiAlerta, fetchAlertasActivas } from "@/lib/api";
 import { resolveAlert } from "@/api/alerts";
-import { toast } from "sonner";
+import { toast } from "@/privacy/notifications";
 
 const severityConfig = {
   critica: { titulo: "Criticas", bg: "bg-destructive/5 border-destructive/30", text: "text-destructive", icon: AlertCircle },
@@ -88,7 +89,7 @@ export default function Alertas() {
               {items.map((alerta) => (
                 <div key={alerta.id} className={`rounded-lg border p-4 flex items-center justify-between gap-4 ${config.bg}`}>
                   <div className="text-sm">
-                    <div className="font-medium">{alerta.descripcion}</div>
+                    <div className="font-medium"><SensitiveText category="Dato" value={alerta.descripcion} /></div>
                     <div className="text-xs text-muted-foreground mt-0.5">
                       {alerta.tipo === "sincronizacion_offline_rechazada" ? "Sincronización offline" : alerta.tipo}
                       {alerta.id_container ? ` · ubicación ${alerta.id_container}` : ""} · {formatDate(alerta.fecha_generacion)}

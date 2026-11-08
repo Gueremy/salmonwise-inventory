@@ -1,3 +1,4 @@
+import { SensitiveText } from "@/privacy/EvidenceMode";
 import { useMemo, useState, useEffect } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
@@ -60,8 +61,8 @@ export default function GalponDetalle() {
       <Breadcrumbs
         items={[
           { label: "Sitios", to: "/sites" },
-          { label: sede.nombre, to: `/sites/${sede.id}` },
-          { label: `Zona ${galpon.codigo} · ${galpon.nombre}` },
+          { sensitive: true, label: sede.nombre, to: `/sites/${sede.id}` },
+          { sensitive: true, label: `Zona ${galpon.codigo} · ${galpon.nombre}` },
         ]}
       />
 
@@ -70,7 +71,7 @@ export default function GalponDetalle() {
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <h2 className="text-xl font-bold tracking-tight">
-                Zona {galpon.codigo} — {galpon.nombre}
+                Zona {galpon.codigo} — <SensitiveText category="Dato" value={galpon.nombre} />
               </h2>
               <p className="text-sm text-muted-foreground">
                 {display.length} ubicaciones registradas · ocupación promedio {ocupacionPromedio}%
@@ -136,6 +137,7 @@ export default function GalponDetalle() {
 
         {/* Inspector lateral genérico */}
         <LocationDetailDrawer
+          availableLocations={inventoryQuery.data?.containers ?? []}
           location={selected}
           onClose={() => setSelectedId(null)}
           zoneName={galpon.codigo}

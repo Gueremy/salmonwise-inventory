@@ -1,3 +1,4 @@
+import { SensitiveText } from "@/privacy/EvidenceMode";
 import { useParams, useNavigate } from "react-router-dom";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { ocupacionToEstado, estadoColor } from "@/lib/inventory";
@@ -37,7 +38,7 @@ export default function SedeDetalle() {
 
   return (
     <div className="p-6 animate-fade-in">
-      <Breadcrumbs items={[{ label: "Sitios", to: "/sites" }, { label: sede.nombre }]} />
+      <Breadcrumbs items={[{ label: "Sitios", to: "/sites" }, { sensitive: true, label: sede.nombre }]} />
 
       <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-6">
         <aside className="space-y-4">
@@ -45,7 +46,7 @@ export default function SedeDetalle() {
             <div className="h-12 w-12 rounded-md bg-primary/10 text-primary flex items-center justify-center mb-3">
               <Icon className="h-6 w-6" />
             </div>
-            <h2 className="font-bold text-lg leading-tight">{sede.nombre}</h2>
+            <h2 className="font-bold text-lg leading-tight"><SensitiveText category="Dato" value={sede.nombre} /></h2>
             <p className="text-xs text-muted-foreground capitalize mt-0.5">{sede.tipo}</p>
 
             <div className="space-y-3 mt-5">
@@ -91,7 +92,7 @@ export default function SedeDetalle() {
                   >
                     <span className="flex items-center gap-2.5">
                       <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: estadoColor[estado] }} />
-                      <span className="text-sm font-medium">{galpon.codigo} · {galpon.nombre}</span>
+                      <span className="text-sm font-medium">{galpon.codigo} · <SensitiveText category="Dato" value={galpon.nombre} /></span>
                     </span>
                     <span className="text-xs text-muted-foreground">{galpon.ocupacion_prom}%</span>
                   </button>

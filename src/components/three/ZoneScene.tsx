@@ -1,3 +1,4 @@
+import { SensitiveText } from "@/privacy/EvidenceMode";
 import { useRef, useState, Suspense } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
 import { OrbitControls, Html, Edges } from "@react-three/drei";
@@ -127,7 +128,7 @@ const LocationBox = ({
       {hovered && itemName && (
         <Html position={[0, -dimensions[1] * 0.5 - 0.3, 0]} center>
           <div className="px-2 py-1 rounded bg-black/90 text-white text-[10px] whitespace-nowrap pointer-events-none shadow-lg border border-white/10">
-            {itemName} {lotName ? `· ${lotName}` : ""}
+            <SensitiveText category="Dato" value={itemName} /> {lotName ? `· ${lotName}` : ""}
           </div>
         </Html>
       )}

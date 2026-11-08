@@ -1,10 +1,11 @@
+import jsQR from "jsqr";
 import { useEffect, useRef, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { QrCode, Search, VideoOff } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/privacy/notifications";
 
 interface Props {
   open: boolean;
@@ -44,27 +45,29 @@ export const QrScannerModal = ({ open, onOpenChange, onCodeScanned }: Props) => 
     video.srcObject = streamRef.current;
     type Detector = { detect: (source: HTMLVideoElement) => Promise<Array<{ rawValue: string }>> };
     const DetectorClass = (window as unknown as { BarcodeDetector?: new (options: { formats: string[] }) => Detector }).BarcodeDetector;
-    if (!DetectorClass) {
-      setCameraError("El escaneo automático no está disponible en este navegador. Usa el código manual.");
-      return;
-    }
-    let detector: Detector;
-    try {
-      detector = new DetectorClass({ formats: ["qr_code", "ean_13", "code_128"] });
-    } catch {
-      try {
-        detector = new DetectorClass({ formats: ["qr_code"] });
-      } catch {
-        setCameraError("El escaneo automático no está disponible en este navegador. Usa el código manual.");
-        return;
-      }
+    const canvas = document.createElement("canvas");
+    const context = canvas.getContext("2d", { willReadFrequently: true });
+    let detector: Detector = { detect: async (source) => {
+      if (!context || !source.videoWidth || !source.videoHeight) return [];
+      canvas.width = Math.min(source.videoWidth, 720);
+      canvas.height = Math.round(source.videoHeight * canvas.width / source.videoWidth);
+      context.drawImage(source, 0, 0, canvas.width, canvas.height);
+      const frame = context.getImageData(0, 0, canvas.width, canvas.height);
+      const code = jsQR(frame.data, frame.width, frame.height);
+      return code ? [{ rawValue: code.data }] : [];
+    }};
+    if (DetectorClass) {
+      try { detector = new DetectorClass({ formats: ["qr_code"] }); } catch { /* JS decoder remains available. */ }
     }
     let active = true;
+    let lastFrame = 0;
     const scan = async () => {
       if (!active) return;
-      if (video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
+      if (Date.now() - lastFrame > 150 && video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
+        lastFrame = Date.now();
         try {
           const codes = await detector.detect(video);
+          if (!active) return;
           const value = codes[0]?.rawValue?.trim();
           if (value) {
             active = false;

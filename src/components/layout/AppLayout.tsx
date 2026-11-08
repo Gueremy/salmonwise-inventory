@@ -17,7 +17,7 @@ export const AppLayout = () => {
   const { pathname } = useLocation();
 
   // Operario tiene su propia vista mobile
-  if (usuario.rol === "operario" && !pathname.startsWith("/operario")) {
+  if (usuario.rol === "operario" && !/^\/(sites|zones|locations|movements|inventario)(\/|$)/.test(pathname)) {
     return <Navigate to="/operario" replace />;
   }
 

@@ -1,3 +1,4 @@
+import { SensitiveText } from "@/privacy/EvidenceMode";
 import { useRole } from "@/context/RoleContext";
 import { resolveLocationVisualState } from "@/domain/location";
 
@@ -83,7 +84,7 @@ export const ZoneGrid2D = ({ locations, selectedId, onSelect, highlightedId }: P
               </div>
 
               <div className="text-[10px] text-muted-foreground truncate w-full">
-                {itemName ? `${itemName}${lotName ? ` · ${lotName}` : ""}` : "Disponible"}
+                <SensitiveText category="Dato" value={itemName ? `${itemName}${lotName ? ` · ${lotName}` : ""}` : "Disponible"} />
               </div>
             </button>
           );

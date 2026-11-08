@@ -1,8 +1,8 @@
 import { apiFetch } from "./client";
-import { CreateMovementPayload, Movement, MovementTypeConfig } from "../domain/movement";
+import { CreateMovementPayload, Movement, MovementTypeConfig, MovementPresentation } from "../domain/movement";
 import { PaginatedResponse } from "./sites";
 
-export interface MovementRequest extends CreateMovementPayload {
+export interface MovementRequest extends CreateMovementPayload, MovementPresentation {
   id: string;
   id_organizacion: string;
   id_usuario_solicitante: string;
@@ -14,6 +14,8 @@ export interface MovementRequest extends CreateMovementPayload {
 }
 
 export interface SyncMovimientoItem {
+  id_movimiento_original?: string;
+  lote_nuevo?: import("@/domain/movement").NewLot;
   uuid_local: string;
   id_tipo_movimiento: string;
   id_item: string;
@@ -34,7 +36,7 @@ export interface SyncBatchResponse {
   rechazados: number;
   resultados: Array<{
     uuid_local: string;
-    estado: "sincronizado" | "duplicado" | "pendiente" | "rechazado";
+    estado: "sincronizado" | "duplicado" | "pendiente" | "rechazado" | "reintentar";
     id_movimiento?: string | null;
     id_solicitud?: string | null;
     motivo?: string | null;

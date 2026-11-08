@@ -1,8 +1,10 @@
-import { createContext, useContext, useEffect, useState, ReactNode, useMemo, useCallback } from "react";
+import { createContext, useContext, useEffect, useState, ReactNode, useMemo, useCallback, useRef } from "react";
+import { refreshToken } from "@/api/auth";
 import { Organization, DEFAULT_THRESHOLDS, DEFAULT_THEME } from "../domain/organization";
 import { registerUnauthorizedHandler } from "@/api/client";
 import { applyOrganizationPalette } from "@/domain/theme";
 import { useQueryClient } from "@tanstack/react-query";
+import { setEvidenceEnabled } from "@/privacy/evidence";
 
 export type Rol = string;
 
@@ -124,6 +126,7 @@ export const RoleProvider = ({ children }: { children: ReactNode }) => {
   const [online, setOnline] = useState(true);
   const [authReady, setAuthReady] = useState(false);
   const [modulosActivos, setModulosActivos] = useState<string[]>(["offline_sync", "importacion", "fefo"]);
+  const refreshing = useRef<Promise<string | null> | null>(null);
 
   useEffect(() => {
     const storedUser = localStorage.getItem(STORAGE_USER_KEY);
@@ -165,6 +168,8 @@ export const RoleProvider = ({ children }: { children: ReactNode }) => {
   }, [authenticated, accessToken, usuario, organizacion]);
 
   const logout = useCallback(() => {
+    localStorage.removeItem("axious.refreshToken");
+    setEvidenceEnabled(false);
     queryClient.clear();
     setAuthenticated(false);
     setAccessToken(null);
@@ -173,9 +178,24 @@ export const RoleProvider = ({ children }: { children: ReactNode }) => {
     setModulosActivos(["offline_sync", "importacion", "fefo"]);
   }, [queryClient]);
 
-  useEffect(() => registerUnauthorizedHandler((requestToken) => {
+  useEffect(() => registerUnauthorizedHandler(async (requestToken) => {
     // Una respuesta tardía de la cuenta anterior no debe cerrar la sesión nueva.
-    if (requestToken && requestToken === accessToken) logout();
+    if (!requestToken || requestToken !== accessToken) return null;
+    if (refreshing.current) return refreshing.current;
+    const refresh = localStorage.getItem("axious.refreshToken");
+    if (!refresh) { logout(); return null; }
+    refreshing.current = refreshToken(refresh).then((tokens) => {
+      // A logout/account switch while renewal was in flight must not restore the old account.
+      if (localStorage.getItem(STORAGE_TOKEN_KEY) !== requestToken) return null;
+      setAccessToken(tokens.access_token);
+      localStorage.setItem(STORAGE_TOKEN_KEY, tokens.access_token);
+      localStorage.setItem("axious.refreshToken", tokens.refresh_token);
+      return tokens.access_token;
+    }).catch((error) => {
+      if (!(error instanceof TypeError) && localStorage.getItem(STORAGE_TOKEN_KEY) === requestToken) logout();
+      return null;
+    }).finally(() => { refreshing.current = null; });
+    return refreshing.current;
   }), [accessToken, logout]);
 
   useEffect(() => {

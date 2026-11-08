@@ -84,7 +84,10 @@ export async function fetchJobInconsistencies(token: string, jobId: string): Pro
   }));
 }
 
+export interface LocationNaming { id: string; codigo_sitio: string; codigo_zona: string; codigo_ubicacion: string; ruta: string }
+export const fetchLocationNaming = (token: string) => apiFetch<LocationNaming[]>("/api/v2/importacion/nomenclatura", {token});
 export interface ImportMapping {
+  __equivalencias?: Record<string, Pick<LocationNaming, "codigo_sitio" | "codigo_zona" | "codigo_ubicacion">>;
   codigo_ubicacion: string;
   codigo_item: string;
   cantidad: string;

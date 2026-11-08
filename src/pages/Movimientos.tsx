@@ -1,3 +1,6 @@
+import { MovimientoForm, type Compensation } from "@/components/MovimientoForm";
+import { useInventorySnapshot } from "@/hooks/use-inventory-snapshot";
+import { SensitiveText } from "@/privacy/EvidenceMode";
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Search, FileText, FileSpreadsheet, CheckCircle2, XCircle } from "lucide-react";
@@ -7,7 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { MovStatusBadge } from "@/components/StatusBadge";
 import { useRole } from "@/context/RoleContext";
 import { approveMovimiento, fetchMovimientos, rejectMovimiento } from "@/lib/api";
-import { toast } from "sonner";
+import { toast } from "@/privacy/notifications";
 import { downloadReport } from "@/api/reports";
 
 const prettyType: Record<string, string> = {
@@ -19,6 +22,7 @@ const prettyType: Record<string, string> = {
 
 function formatDate(dateValue: string) {
   return new Date(dateValue).toLocaleString("es-CL", {
+    timeZone: "America/Santiago",
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
@@ -31,6 +35,10 @@ export default function Movimientos() {
   const { accessToken, can, hasModule } = useRole();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
+  const [history, setHistory] = useState(true);
+  const [compensation, setCompensation] = useState<Compensation | null>(null);
+  const inventory = useInventorySnapshot();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [motivoRechazo, setMotivoRechazo] = useState("");
   const [downloading, setDownloading] = useState(false);
@@ -39,7 +47,7 @@ export default function Movimientos() {
     if (!accessToken) return;
     setDownloading(true);
     try {
-      const result = await downloadReport(accessToken, kind);
+      const result = await downloadReport(accessToken, kind, new URLSearchParams({ ...(search.trim() ? { q: search.trim() } : {}) }).toString(), history ? "movimientos" : "solicitudes");
       const url = URL.createObjectURL(result.blob);
       const link = document.createElement("a");
       link.href = url;
@@ -54,22 +62,24 @@ export default function Movimientos() {
   };
 
   const movimientosQuery = useQuery({
-    queryKey: ["movimientos", accessToken, search],
+    queryKey: ["movimientos", accessToken, search, page, history],
     enabled: Boolean(accessToken),
     retry: false,
     queryFn: async () => {
       const params = new URLSearchParams();
-      params.set("limit", "200");
+      params.set("size", "25");
+      params.set("page", String(page));
+      if (history) params.set("historial", "1");
       if (search.trim()) {
         params.set("q", search.trim());
       }
       const response = await fetchMovimientos(accessToken!, params.toString());
-      return response.items;
+      return response;
     },
   });
 
   const selected = useMemo(
-    () => movimientosQuery.data?.find((item) => item.id === selectedId) ?? null,
+    () => movimientosQuery.data?.items.find((item) => item.id === selectedId) ?? null,
     [movimientosQuery.data, selectedId],
   );
 
@@ -113,10 +123,14 @@ export default function Movimientos() {
     },
   });
 
-  const items = movimientosQuery.data ?? [];
+  const items = movimientosQuery.data?.items ?? [];
 
   return (
     <div className="p-6 animate-fade-in">
+      <div className="flex gap-2 mb-3">
+        <Button variant={history ? "default" : "outline"} onClick={() => {setHistory(true); setPage(1); setSelectedId(null);}}>Historial confirmado</Button>
+        <Button variant={!history ? "default" : "outline"} onClick={() => {setHistory(false); setPage(1); setSelectedId(null);}}>Solicitudes y aprobaciones</Button>
+      </div>
       <div className="bg-card border border-border rounded-lg shadow-sm">
         <div className="p-4 flex flex-wrap items-center gap-3 border-b border-border">
           <div className="relative flex-1 min-w-60">
@@ -125,12 +139,17 @@ export default function Movimientos() {
               className="pl-9"
               placeholder="Buscar producto, lote, operario o container"
               value={search}
-              onChange={(event) => setSearch(event.target.value)}
+              onChange={(event) => { setSearch(event.target.value); setPage(1); }}
             />
           </div>
-          <Button variant="outline" size="sm" disabled={downloading} onClick={() => void exportMovements("pdf")}><FileText className="h-4 w-4 mr-1.5" />PDF</Button>
-          <Button variant="outline" size="sm" disabled={downloading} onClick={() => void exportMovements("excel")}><FileSpreadsheet className="h-4 w-4 mr-1.5" />Excel</Button>
+          <Button variant="outline" size="sm" disabled={downloading || !can("reporte:export")} onClick={() => void exportMovements("pdf")}><FileText className="h-4 w-4 mr-1.5" />PDF</Button>
+          <Button variant="outline" size="sm" disabled={downloading || !can("reporte:export")} onClick={() => void exportMovements("excel")}><FileSpreadsheet className="h-4 w-4 mr-1.5" />Excel</Button>
         </div>
+        {movimientosQuery.isError && <div role="alert" className="p-4 text-destructive">
+          <SensitiveText category="Dato" value={movimientosQuery.error instanceof Error ? movimientosQuery.error.message : "No se pudieron cargar los movimientos."} />
+          <Button variant="outline" onClick={() => void movimientosQuery.refetch()}>Reintentar</Button>
+        </div>}
+        {movimientosQuery.isLoading && <p role="status" className="p-4">Cargando movimientos...</p>}
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-muted/40 text-xs uppercase text-muted-foreground">
@@ -149,15 +168,15 @@ export default function Movimientos() {
                 >
                   <td className="px-4 py-3 text-muted-foreground">{formatDate(item.fecha_hora)}</td>
                   <td className="px-4 py-3">{prettyType[item.tipo] ?? item.tipo}</td>
-                  <td className="px-4 py-3 font-medium">{item.producto_nombre}</td>
+                  <td className="px-4 py-3 font-medium"><SensitiveText category="Dato" value={item.producto_nombre} /></td>
                   <td className="px-4 py-3 text-muted-foreground font-mono text-xs">{item.numero_lote}</td>
                   <td className="px-4 py-3">{item.container_codigo}</td>
-                  <td className="px-4 py-3">{item.operario_nombre}</td>
+                  <td className="px-4 py-3"><SensitiveText category="Persona" value={item.operario_nombre} /></td>
                   <td className="px-4 py-3"><MovStatusBadge estado={item.estado} /></td>
-                  <td className="px-4 py-3 text-muted-foreground">{item.aprobador_nombre ?? "—"}</td>
+                  <td className="px-4 py-3 text-muted-foreground"><SensitiveText category="Persona" value={item.aprobador_nombre ?? "—"} /></td>
                 </tr>
               ))}
-              {items.length === 0 && (
+              {!movimientosQuery.isError && !movimientosQuery.isLoading && items.length === 0 && (
                 <tr>
                   <td colSpan={8} className="px-4 py-10 text-center text-muted-foreground">
                     No hay movimientos para mostrar.
@@ -169,14 +188,30 @@ export default function Movimientos() {
         </div>
       </div>
 
+      <div className="flex gap-3 items-center my-3">
+        <Button variant="outline" disabled={page <= 1} onClick={() => setPage(page - 1)}>Anterior</Button>
+        <span>Página {page} de {movimientosQuery.data?.pages ?? 1} · {movimientosQuery.data?.total ?? 0} registros</span>
+        <Button variant="outline" disabled={page >= (movimientosQuery.data?.pages ?? 1)} onClick={() => setPage(page + 1)}>Siguiente</Button>
+      </div>
+      {compensation && <MovimientoForm open onOpenChange={(open) => {if (!open) setCompensation(null);}}
+        compensation={compensation} availableContainers={inventory.data?.containers ?? []}
+        initialTipo={compensation.efecto_stock === "entrada" ? "salida" : compensation.efecto_stock === "salida" ? "entrada" : "traslado"} />}
       {selected && (
         <div className="fixed inset-0 bg-black/40 z-40" onClick={() => setSelectedId(null)}>
           <aside
             className="absolute right-0 top-0 bottom-0 w-full max-w-md bg-card border-l border-border p-6 overflow-y-auto animate-fade-in"
             onClick={(event) => event.stopPropagation()}
           >
-            <h3 className="font-bold text-lg mb-1">{selected.producto_nombre}</h3>
+            <h3 className="font-bold text-lg mb-1"><SensitiveText category="Dato" value={selected.producto_nombre} /></h3>
             <MovStatusBadge estado={selected.estado} />
+            {history && selected.efecto_stock && selected.efecto_stock !== "sin_efecto" && !selected.id_movimiento_original && can("stock:adjust") && <Button className="my-3" variant="outline" disabled={!navigator.onLine} onClick={() => {
+              setCompensation({id: selected.id, id_item: selected.id_producto, id_lote: selected.id_lote,
+                cantidad: Number(selected.cantidad), efecto_stock: selected.efecto_stock!,
+                id_ubicacion_origen: selected.id_ubicacion_origen, id_ubicacion_destino: selected.id_container_destino});
+              setSelectedId(null);
+            }}>Corregir mediante reverso completo</Button>}
+            {selected.id_movimiento_original && <p className="text-xs my-2">Reverso de la referencia {selected.id_movimiento_original}</p>}
+            {selected.numero_lote !== "Sin lote registrado" && <Button className="my-2" variant="outline" onClick={() => {setSearch(selected.numero_lote); setPage(1); setHistory(true); setSelectedId(null);}}>Consultar historial de este lote</Button>}
             <div className="mt-5 space-y-3 text-sm">
               {[
                 ["Fecha/Hora", formatDate(selected.fecha_hora)],
@@ -190,7 +225,7 @@ export default function Movimientos() {
               ].map(([label, value]) => (
                 <div key={label} className="flex justify-between gap-3 py-2 border-b border-border last:border-0">
                   <span className="text-muted-foreground">{label}</span>
-                  <span className="font-medium text-right">{value}</span>
+                  <span className="font-medium text-right"><SensitiveText value={value} /></span>
                 </div>
               ))}
             </div>
@@ -198,7 +233,7 @@ export default function Movimientos() {
             {hasModule("pack_salmonero") && <div className="mt-5 p-3 rounded-md bg-secondary/5 border border-secondary/30">
               <div className="text-xs font-semibold text-secondary mb-2">Datos regulatorios</div>
               <div className="text-xs space-y-1.5 text-muted-foreground">
-                <div>Proveedor: <span className="text-foreground font-medium">{selected.nombre_proveedor ?? "—"}</span></div>
+                <div>Proveedor: <span className="text-foreground font-medium"><SensitiveText category="Empresa" value={selected.nombre_proveedor ?? "—"} /></span></div>
                 <div>Guia: <span className="text-foreground font-medium">{selected.num_guia_despacho ?? "—"}</span></div>
                 <div>Vencimiento: <span className="text-foreground font-medium">{selected.fecha_vencimiento ? formatDate(selected.fecha_vencimiento) : "—"}</span></div>
                 <div>Registro sanitario: <span className="text-foreground font-medium">{selected.registro_sanitario ?? "—"}</span></div>
@@ -237,7 +272,7 @@ export default function Movimientos() {
             {selected.motivo_rechazo && (
               <div className="mt-5 rounded-md border border-destructive/20 bg-destructive/5 p-3 text-sm">
                 <div className="font-semibold text-destructive mb-1">Motivo de rechazo</div>
-                <div>{selected.motivo_rechazo}</div>
+                <div><SensitiveText category="Dato" value={selected.motivo_rechazo} /></div>
               </div>
             )}
 

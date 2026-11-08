@@ -1,3 +1,4 @@
+import { SensitiveText, useEvidenceMode } from "@/privacy/EvidenceMode";
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -19,7 +20,7 @@ import { useInventorySnapshot } from "@/hooks/use-inventory-snapshot";
 import { useRole } from "@/context/RoleContext";
 import { fetchManagementSummary } from "@/api/management";
 import { downloadReport } from "@/api/reports";
-import { toast } from "sonner";
+import { toast } from "@/privacy/notifications";
 
 const tipoIcon: Record<string, typeof Building2> = {
   embarcacion: Ship,
@@ -29,6 +30,7 @@ const tipoIcon: Record<string, typeof Building2> = {
 };
 
 export default function Gerencia() {
+  const { enabled: evidence, present } = useEvidenceMode();
   const { accessToken, organizacion } = useRole();
   const inventoryQuery = useInventorySnapshot();
   const sedes = useMemo(() => inventoryQuery.data?.sedes ?? [], [inventoryQuery.data?.sedes]);
@@ -42,9 +44,9 @@ export default function Gerencia() {
   const lineData = managementQuery.data?.movimientos_diarios ?? [];
   const topProducts = managementQuery.data?.top_items ?? [];
   const siteSummaryData = useMemo(() => sedes.map((s) => ({
-    nombre: s.nombre, ocupacion: s.ocupacion,
+    nombre: present(s.nombre, "Sitio"), ocupacion: s.ocupacion,
     disponible: Math.max(0, 100 - s.ocupacion),
-  })), [sedes]);
+  })), [sedes, evidence, present]);
   const hasMovementHistory = lineData.some((day) => day.total > 0);
 
   const handleExport = async (type: "pdf" | "excel") => {
@@ -71,9 +73,10 @@ export default function Gerencia() {
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Dashboard Ejecutivo Gerencial</h1>
           <p className="text-sm text-muted-foreground mt-0.5">
-            Visión global multi-sitio de {organizacion.nombre} · Solo lectura
+            Visión global multi-sitio de <SensitiveText category="Empresa" value={organizacion.nombre} /> · Solo lectura
           </p>
         </div>
+        <div className="space-y-1">
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={() => handleExport("pdf")}>
             <FileText className="h-4 w-4 mr-1.5" />
@@ -83,6 +86,8 @@ export default function Gerencia() {
             <FileSpreadsheet className="h-4 w-4 mr-1.5" />
             Excel
           </Button>
+        </div>
+        <p className="text-xs text-muted-foreground">Las descargas contienen datos operativos sin censura.</p>
         </div>
       </div>
 
@@ -97,7 +102,7 @@ export default function Gerencia() {
                 <Icon className="h-5 w-5 text-primary" />
                 <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: estadoColor[est] }} />
               </div>
-              <div className="font-semibold text-sm leading-tight">{s.nombre}</div>
+              <div className="font-semibold text-sm leading-tight"><SensitiveText category="Dato" value={s.nombre} /></div>
               <div className="text-3xl font-bold mt-3">{s.ocupacion}%</div>
               <div className="text-xs text-muted-foreground">Ocupación promedio</div>
               <div
@@ -126,7 +131,7 @@ export default function Gerencia() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="bg-card border border-border rounded-lg p-5 shadow-sm">
           <h3 className="font-semibold mb-1">Movimientos confirmados por día</h3>
-          <p className="text-xs text-muted-foreground mb-4">Últimos 15 días · hora UTC</p>
+          <p className="text-xs text-muted-foreground mb-4">Últimos 15 días · America/Santiago</p>
           {hasMovementHistory ? <div className="h-72">
             <ResponsiveContainer>
               <LineChart data={lineData}>
@@ -181,7 +186,7 @@ export default function Gerencia() {
             {topProducts.map((p, i) => (
               <tr key={p.id_item} className="border-t border-border">
                 <td className="px-5 py-3 text-muted-foreground">{i + 1}</td>
-                <td className="px-5 py-3 font-medium">{p.nombre}</td>
+                <td className="px-5 py-3 font-medium"><SensitiveText category="Dato" value={p.nombre} /></td>
                 <td className="px-5 py-3">{p.movimientos}</td>
               </tr>
             ))}

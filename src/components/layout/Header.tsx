@@ -1,3 +1,4 @@
+import { SensitiveText } from "@/privacy/EvidenceMode";
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { rolLabel, useRole } from "@/context/RoleContext";
@@ -39,10 +40,10 @@ export const Header = ({ title }: { title?: string }) => {
         <DropdownMenu>
           <DropdownMenuTrigger className="flex items-center gap-2 px-3 py-1.5 rounded-md hover:bg-muted text-sm">
             <div className="h-8 w-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-semibold">
-              {usuario.nombre.split(" ").map((n) => n[0]).slice(0, 2).join("")}
+              <SensitiveText category="Persona" value={usuario.nombre.split(" ").map((n) => n[0]).slice(0, 2).join("")} />
             </div>
             <div className="hidden sm:block text-left">
-              <div className="font-medium leading-tight">{usuario.nombre}</div>
+              <div className="font-medium leading-tight"><SensitiveText category="Persona" value={usuario.nombre} /></div>
               <div className="text-[11px] text-muted-foreground leading-tight">{rolLabel[usuario.rol]}</div>
             </div>
             <ChevronDown className="hidden sm:block h-4 w-4 text-muted-foreground" />

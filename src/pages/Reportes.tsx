@@ -1,3 +1,4 @@
+import { SensitiveText } from "@/privacy/EvidenceMode";
 import { useState } from "react";
 import { FileSpreadsheet, FileText, Fingerprint } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -43,6 +44,7 @@ export default function Reportes() {
       </div>
 
       <section className="bg-card border border-border rounded-lg p-5 space-y-4">
+        <p className="text-xs text-muted-foreground">Las descargas contienen datos operativos sin censura. El modo evidencia protege la pantalla.</p>
         <div className="flex flex-wrap gap-3">
           <Button onClick={() => handleDownload("pdf")} disabled={Boolean(loading)} className="bg-primary hover:bg-secondary">
             <FileText className="h-4 w-4 mr-2" /> {loading === "pdf" ? "Generando..." : "PDF movimientos"}
@@ -58,14 +60,14 @@ export default function Reportes() {
         </div>
       </section>
 
-      {error && <div className="rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">{error}</div>}
+      {error && <div className="rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive"><SensitiveText category="Dato" value={error} /></div>}
 
       {lastReport && (
         <section className="bg-card border border-border rounded-lg p-5 space-y-2">
           <div className="flex items-center gap-2 font-semibold">
             <Fingerprint className="h-4 w-4 text-primary" /> Hash SHA-256 generado
           </div>
-          <div className="text-sm text-muted-foreground">{lastReport.filename}</div>
+          <div className="text-sm text-muted-foreground"><SensitiveText category="Dato" value={lastReport.filename} /></div>
           <code className="block break-all rounded-md bg-muted px-3 py-2 text-xs">{lastReport.sha256}</code>
         </section>
       )}

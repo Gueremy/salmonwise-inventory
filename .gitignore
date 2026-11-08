@@ -50,3 +50,11 @@ node_modules/
 dist/
 dist-ssr/
 *.local
+
+# Frontend source modules must remain versioned despite the Python lib/ rule.
+!src/lib/
+!src/lib/**
+
+.cache/
+playwright-report/
+test-results/

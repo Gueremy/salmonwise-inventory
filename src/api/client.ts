@@ -1,8 +1,10 @@
+import { ApiError } from "./errors";
 export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000";
 
-let onUnauthorizedHandler: ((token: string | null | undefined) => void) | null = null;
+type UnauthorizedHandler = (token: string | null | undefined) => void | string | null | Promise<string | null>;
+let onUnauthorizedHandler: UnauthorizedHandler | null = null;
 
-export function registerUnauthorizedHandler(handler: (token: string | null | undefined) => void) {
+export function registerUnauthorizedHandler(handler: UnauthorizedHandler) {
   onUnauthorizedHandler = handler;
   return () => {
     if (onUnauthorizedHandler === handler) onUnauthorizedHandler = null;
@@ -47,13 +49,14 @@ export async function apiFetch<T>(endpoint: string, options: RequestOptions = {}
     }
   }
 
-  const response = await fetch(url, {
+  let response = await fetch(url, {
     ...rest,
     headers: reqHeaders,
   });
 
   if (response.status === 401) {
-    onUnauthorizedHandler?.(token);
+    const renewed = await onUnauthorizedHandler?.(token);
+    if (renewed) response = await fetch(url, { ...rest, headers: { ...reqHeaders, Authorization: `Bearer ${renewed}` } });
   }
 
   if (!response.ok) {
@@ -64,7 +67,7 @@ export async function apiFetch<T>(endpoint: string, options: RequestOptions = {}
     } catch {
       errorDetail = response.statusText || errorDetail;
     }
-    throw new Error(errorDetail);
+    throw new ApiError(response.status, errorDetail, response.headers.get("X-Request-ID"));
   }
 
   if (response.status === 204) {

@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Navigate, Outlet, Route, Routes } from "react-router-dom";
+import { BrowserRouter, Navigate, Outlet, Route, Routes, useLocation } from "react-router-dom";
+import LocationRoute from "./pages/LocationRoute";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -23,17 +24,20 @@ import ImportWizard from "./pages/reconciliation/ImportWizard";
 import LayoutEditor from "./pages/layout/LayoutEditor";
 import Stub from "./pages/Stub";
 import NotFound from "./pages/NotFound";
+import { EvidenceModeControl } from "@/privacy/EvidenceMode";
+import { PwaUpdateNotice } from "@/components/PwaUpdateNotice";
 
 const queryClient = new QueryClient();
 
 const ProtectedRoute = () => {
+  const location = useLocation();
   const { authenticated, authReady } = useRole();
 
   if (!authReady) {
     return null;
   }
 
-  return authenticated ? <Outlet /> : <Navigate to="/" replace />;
+  return authenticated ? <Outlet /> : <Navigate to="/" state={{ from: location.pathname + location.search }} replace />;
 };
 
 const App = () => (
@@ -42,6 +46,8 @@ const App = () => (
       <Toaster />
       <Sonner />
       <RoleProvider>
+        <EvidenceModeControl />
+        <PwaUpdateNotice />
         <BrowserRouter>
           <Routes>
             <Route path="/" element={<Login />} />
@@ -55,7 +61,7 @@ const App = () => (
                 <Route path="/sites/:id" element={<SedeDetalle />} />
                 <Route path="/sites/:siteId/zones/:id" element={<GalponDetalle />} />
                 <Route path="/zones/:id" element={<GalponDetalle />} />
-                <Route path="/locations/:id" element={<GalponDetalle />} />
+                <Route path="/locations/:id" element={<LocationRoute />} />
                 <Route path="/movements" element={<Movimientos />} />
                 <Route path="/alerts" element={<Alertas />} />
                 <Route path="/reports" element={<Reportes />} />

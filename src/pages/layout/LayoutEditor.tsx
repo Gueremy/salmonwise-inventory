@@ -1,3 +1,4 @@
+import { SensitiveText } from "@/privacy/EvidenceMode";
 import { useState, useEffect, useMemo } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -21,14 +22,16 @@ import { useRole } from "@/context/RoleContext";
 import { useSitesQuery, useZonesQuery, useLocationsQuery } from "@/hooks/use-spatial-inventory";
 import { createZone } from "@/api/zones";
 import { updateLocationLayout, batchCreateLocations } from "@/api/layout";
-import { toast } from "sonner";
+import { toast } from "@/privacy/notifications";
 
 export default function LayoutEditor() {
-  const { accessToken } = useRole();
+  const { accessToken, organizacion } = useRole();
   const queryClient = useQueryClient();
 
   const sitesQuery = useSitesQuery();
   const sites = useMemo(() => sitesQuery.data ?? [], [sitesQuery.data]);
+  const [newCapacity, setNewCapacity] = useState("500");
+  const [newUnit, setNewUnit] = useState("kg");
   const [selectedSiteId, setSelectedSiteId] = useState<string>("");
 
   useEffect(() => {
@@ -120,10 +123,12 @@ export default function LayoutEditor() {
   const batchCreateMutation = useMutation({
     mutationFn: async () => {
       if (!accessToken || !selectedZoneId) return;
+      if (!(Number(newCapacity) > 0) || !organizacion.configuracion.unidades_permitidas.includes(newUnit)) throw new Error("Revisa la capacidad y unidad de las ubicaciones nuevas");
+      const nextPosition = Math.max(0, ...locations.map((location) => /^P\d+$/.test(location.codigo) ? Number(location.codigo.slice(1)) : 0)) + 1;
       const newItems = Array.from({ length: 4 }).map((_, i) => ({
-        codigo: `U-${Date.now().toString().slice(-4)}-${i + 1}`,
-        capacidad_maxima: 500,
-        unidad_capacidad: "kg",
+        codigo: `P${String(nextPosition + i).padStart(4, "0")}`,
+        capacidad_maxima: Number(newCapacity),
+        unidad_capacidad: newUnit,
         layout: { x: (i % 2) * 2, y: 0, z: Math.floor(i / 2) * 2, width: 1, height: 1, depth: 1 },
       }));
       await batchCreateLocations(accessToken, selectedZoneId, newItems);
@@ -139,6 +144,11 @@ export default function LayoutEditor() {
 
   return (
     <div className="p-6 space-y-6 animate-fade-in max-w-7xl mx-auto">
+      <div className="flex flex-wrap items-end gap-3 mb-4 text-sm">
+        <div><Label htmlFor="new-location-capacity">Capacidad por ubicación nueva</Label><Input id="new-location-capacity" type="number" min="0.001" value={newCapacity} onChange={(e) => setNewCapacity(e.target.value)} /></div>
+        <div><Label htmlFor="new-location-unit">Unidad</Label><select id="new-location-unit" className="border rounded p-2" value={newUnit} onChange={(e) => setNewUnit(e.target.value)}>{organizacion.configuracion.unidades_permitidas.map((unit) => <option key={unit} value={unit}>{unit}</option>)}</select></div>
+        <p className="text-xs text-muted-foreground">Las posiciones nuevas usan P0001, P0002... dentro de su zona. La ruta completa las identifica sin renombrar posiciones existentes.</p>
+      </div>
       <Breadcrumbs items={[{ label: "Editor de Layout 2D/3D" }]} />
 
       <div className="flex flex-wrap items-center justify-between gap-4">
@@ -182,7 +192,7 @@ export default function LayoutEditor() {
             <SelectContent>
               {sites.map((s) => (
                 <SelectItem key={s.id} value={s.id}>
-                  {s.nombre} ({s.codigo})
+                  <SensitiveText category="Dato" value={s.nombre} /> ({s.codigo})
                 </SelectItem>
               ))}
             </SelectContent>
@@ -199,7 +209,7 @@ export default function LayoutEditor() {
               <SelectContent>
                 {zones.map((z) => (
                   <SelectItem key={z.id} value={z.id}>
-                    {z.nombre} ({z.codigo})
+                    <SensitiveText category="Dato" value={z.nombre} /> ({z.codigo})
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -220,7 +230,7 @@ export default function LayoutEditor() {
       {/* Modal para crear zona */}
       {showNewZone && (
         <div className="bg-card border border-primary/30 rounded-lg p-4 space-y-3 shadow-md animate-fade-in max-w-md">
-          <h3 className="font-semibold text-sm">Nueva Zona en {sites.find((s) => s.id === selectedSiteId)?.nombre}</h3>
+          <h3 className="font-semibold text-sm">Nueva Zona en <SensitiveText category="Dato" value={sites.find((s) => s.id === selectedSiteId)?.nombre} /></h3>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
               <Label className="text-xs">Código *</Label>

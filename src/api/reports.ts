@@ -22,7 +22,7 @@ export async function downloadReport(
   token: string,
   kind: "pdf" | "excel" | "sernapesca",
   query = "",
-  resource: "movimientos" | "inconsistencias" = "movimientos",
+  resource: "movimientos" | "solicitudes" | "inconsistencias" = "movimientos",
 ): Promise<ReportDownloadResult> {
   const endpoint = kind === "sernapesca"
     ? "/reportes/sernapesca"

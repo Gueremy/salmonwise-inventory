@@ -85,9 +85,13 @@ function toOccupancyPercent(ocupacionActual: number, capacidadMax: number) {
   return Math.round((ocupacionActual / capacidadMax) * 100);
 }
 
-function average(values: number[]) {
-  if (values.length === 0) return 0;
-  return Math.round(values.reduce((total, value) => total + value, 0) / values.length);
+function weightedOccupancy(locations: InventoryContainerView[]) {
+  if (!locations.length) return 0;
+  const units = new Set(locations.map((location) => location.unidadMedida));
+  if (units.size > 1) return Math.round(locations.reduce((sum, location) => sum + location.ocupacion, 0) / locations.length * 100) / 100;
+  const capacity = locations.reduce((sum, location) => sum + Number(location.capacidadMax), 0);
+  const stock = locations.reduce((sum, location) => sum + Number(location.ocupacionActual), 0);
+  return capacity ? Math.round(stock / capacity * 10000) / 100 : 0;
 }
 
 function buildContainer(container: ApiContainer): InventoryContainerView {
@@ -100,9 +104,9 @@ function buildContainer(container: ApiContainer): InventoryContainerView {
     codigo: container.codigo,
     ocupacion,
     estado: container.estado as EstadoContainer,
-    producto: hasContent ? productoBase : null,
-    lote: null,
-    vencimiento: null,
+    producto: hasContent ? container.producto_nombre ?? "Contenido histórico incompleto" : null,
+    lote: container.numero_lote ?? null,
+    vencimiento: container.fecha_vencimiento ?? null,
     galponId: container.id_galpon,
     capacidadMax: container.capacidad_max,
     ocupacionActual: container.ocupacion_actual,
@@ -167,7 +171,7 @@ export function buildInventorySnapshot(input: {
         codigo: galpon.codigo,
         nombre: galpon.nombre,
         containers: galponContainers.length,
-        ocupacion_prom: average(galponContainers.map((item) => item.ocupacion)),
+        ocupacion_prom: weightedOccupancy(galponContainers),
         sedeId: galpon.id_sede,
       };
     })
@@ -185,13 +189,14 @@ export function buildInventorySnapshot(input: {
     .filter((sede) => sede.estado === "activo")
     .map((sede) => {
       const sedeGalpones = galponesBySede.get(sede.id) ?? [];
-      const occupancyValues = sedeGalpones.map((galpon) => galpon.ocupacion_prom);
+      const zoneIds = new Set(sedeGalpones.map((galpon) => galpon.id));
+      const siteLocations = containers.filter((location) => zoneIds.has(location.galponId));
 
       return {
         id: sede.id,
         nombre: sede.nombre,
         tipo: tipoSedeMap[sede.tipo],
-        ocupacion: average(occupancyValues),
+        ocupacion: weightedOccupancy(siteLocations),
         alertas: alertCountBySede.get(sede.id) ?? 0,
       };
     });

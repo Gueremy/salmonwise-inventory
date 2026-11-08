@@ -1,3 +1,4 @@
+import { SensitiveText } from "@/privacy/EvidenceMode";
 import { NavLink } from "react-router-dom";
 import {
   Box,
@@ -55,7 +56,7 @@ export const Sidebar = ({ className = "", onNavigate }: { className?: string; on
           <div>
             <div className="font-bold tracking-tight">SalmoTrack v2</div>
             <div className="text-[11px] text-sidebar-foreground/70 truncate max-w-[150px]">
-              {usuario.organizacion_nombre ?? "Plataforma Visual"}
+              <SensitiveText category="Empresa" value={usuario.organizacion_nombre ?? "Plataforma Visual"} />
             </div>
           </div>
         </div>

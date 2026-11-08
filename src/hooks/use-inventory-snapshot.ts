@@ -6,10 +6,14 @@ import { fetchLocationsByZone } from "@/api/locations";
 import { fetchActiveAlerts } from "@/api/alerts";
 import { buildInventorySnapshot } from "@/lib/inventory";
 import type { ApiSede, ApiContainer } from "@/lib/api";
-import { getCachedSites, getCachedZones, getCachedLocations, saveCatalogToCache } from "@/offline/catalogCache";
+import { offlineRead } from "@/offline/preparation";
+import { apiFetch, apiFetchAllPages } from "@/api/client";
+import type { OfflinePackage } from "@/offline/preparation";
+import type { Item } from "@/domain/item";
+import type { Lot } from "@/domain/lot";
 
 export function useInventorySnapshot() {
-  const { accessToken, organizacion } = useRole();
+  const { accessToken, organizacion, usuario } = useRole();
 
   const query = useQuery({
     queryKey: ["inventory-snapshot", accessToken, organizacion.id],
@@ -17,58 +21,26 @@ export function useInventorySnapshot() {
     networkMode: "always",
     retry: 1,
     queryFn: async () => {
-      // 1. Obtener sitios activos
-      const sites = await (async () => {
-        if (navigator.onLine) {
-          try {
-            const fresh = await fetchSites(accessToken!);
-            await saveCatalogToCache({ sites: fresh });
-            return fresh;
-          } catch (cause) {
-            if (!(cause instanceof TypeError)) throw cause;
-          }
-        }
-        const cached = await getCachedSites(organizacion.id);
-        if (!cached.length) throw new Error("No hay sitios guardados para uso sin conexión.");
-        return cached;
-      })();
-
-      // 2. Obtener zonas para cada sitio
-      const zonesArrays = await Promise.all(
-        sites.map(async (site) => {
-          if (navigator.onLine) {
-            try {
-              const fresh = await fetchZonesBySite(accessToken!, site.id);
-              await saveCatalogToCache({ zones: fresh });
-              return fresh;
-            } catch (cause) {
-              if (!(cause instanceof TypeError)) throw cause;
-            }
-          }
-          return getCachedZones(site.id);
-        }),
-      );
-      const allZones = zonesArrays.flat();
-
-      // 3. Obtener ubicaciones para cada zona
-      const locationsArrays = await Promise.all(
-        allZones.map(async (zone) => {
-          if (navigator.onLine) {
-            try {
-              const fresh = await fetchLocationsByZone(accessToken!, zone.id);
-              await saveCatalogToCache({ locations: fresh });
-              return fresh;
-            } catch (cause) {
-              if (!(cause instanceof TypeError)) throw cause;
-            }
-          }
-          return getCachedLocations(zone.id);
-        }),
-      );
-      const allLocations = locationsArrays.flat();
-
-      // 4. Obtener alertas activas
-      const alerts = await fetchActiveAlerts(accessToken!).catch(() => []);
+      const data = await offlineRead(organizacion.id, usuario.id, async () => {
+        const sites = await fetchSites(accessToken!);
+        const zones = (await Promise.all(sites.map((site) => fetchZonesBySite(accessToken!, site.id)))).flat();
+        const locations = (await Promise.all(zones.map((zone) => fetchLocationsByZone(accessToken!, zone.id)))).flat();
+        const [items, lots, balances] = await Promise.all([
+          apiFetchAllPages<Item>("/api/v2/items", accessToken!),
+          apiFetchAllPages<Lot>("/api/v2/lotes", accessToken!),
+          apiFetch<OfflinePackage["balances"]>("/api/v2/movimientos/saldos", { token: accessToken }),
+        ]);
+        return { sites, zones, locations, items, lots, balances };
+      }, (cached) => cached);
+      const { sites, zones: allZones, locations: allLocations } = data;
+      const alerts = navigator.onLine ? await fetchActiveAlerts(accessToken!).catch(() => []) : [];
+      const content = (locationId: string) => {
+        const balances = data.balances.filter((balance) => balance.id_ubicacion === locationId && Number(balance.cantidad) > 0);
+        const items = [...new Set(balances.map((balance) => data.items.find((item) => item.id === balance.id_item)?.nombre).filter(Boolean))];
+        const lots = balances.map((balance) => data.lots.find((lot) => lot.id === balance.id_lote)).filter(Boolean);
+        return { producto_nombre: items.join(", ") || undefined, numero_lote: [...new Set(lots.map((lot) => lot!.numero_lote))].join(", ") || undefined,
+          fecha_vencimiento: lots.map((lot) => lot!.fecha_vencimiento).filter(Boolean).sort()[0] ?? null };
+      };
 
       return buildInventorySnapshot({
         sedes: sites.map((s) => ({
@@ -90,6 +62,7 @@ export function useInventorySnapshot() {
           columnas: Number(z.layout?.columnas) || 5,
         })),
         containers: allLocations.map((l) => ({
+          ...content(l.id),
           id: l.id,
           codigo: l.codigo,
           id_galpon: l.id_zona,

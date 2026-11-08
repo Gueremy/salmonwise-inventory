@@ -1,3 +1,5 @@
+import { db } from "@/offline/db";
+import { SensitiveText } from "@/privacy/EvidenceMode";
 import { useEffect, useState, useCallback } from "react";
 import { Wifi, WifiOff, RefreshCw, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -5,14 +7,15 @@ import { useRole } from "@/context/RoleContext";
 import { getPendingMovementsCount, getRejectedMovements } from "@/offline/movementQueue";
 import type { LocalMovementRecord } from "@/offline/db";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { syncAllPending } from "@/offline/syncEngine";
-import { toast } from "sonner";
+import { refreshAwaitingApprovals, syncAllPending } from "@/offline/syncEngine";
+import { toast } from "@/privacy/notifications";
 import { useQueryClient } from "@tanstack/react-query";
 
 export const OfflineStatusIndicator = ({ onDark = false }: { onDark?: boolean }) => {
   const { accessToken, online, setOnline, organizacion, usuario } = useRole();
   const queryClient = useQueryClient();
   const [pendingCount, setPendingCount] = useState(0);
+  const [awaitingApproval, setAwaitingApproval] = useState(0);
   const [rejected, setRejected] = useState<LocalMovementRecord[]>([]);
   const [syncing, setSyncing] = useState(false);
 
@@ -20,6 +23,8 @@ export const OfflineStatusIndicator = ({ onDark = false }: { onDark?: boolean })
     try {
       const count = await getPendingMovementsCount(organizacion.id, usuario.id);
       setPendingCount(count);
+      setAwaitingApproval(await db.pendingMovements.where("organization_id").equals(organizacion.id)
+        .and((movement) => movement.user_id === usuario.id && movement.server_state === "pendiente").count());
       setRejected(await getRejectedMovements(organizacion.id, usuario.id));
     } catch {
       // IndexedDB puede estar cerrado
@@ -33,6 +38,7 @@ export const OfflineStatusIndicator = ({ onDark = false }: { onDark?: boolean })
       const res = await syncAllPending(accessToken, organizacion.id, usuario.id);
       if (res.total > 0) {
         if (res.rechazados) toast.error(`${res.rechazados} movimientos rechazados. Revisa el motivo en el indicador de sincronización.`);
+        else if (res.sincronizados < res.total) toast.info("Hay movimientos que aún requieren reintento. Se conservan en este dispositivo.");
         else toast.success(`Sincronización completa: ${res.sincronizados} movimientos recibidos por el servidor.`);
         queryClient.invalidateQueries({ queryKey: ["movimientos"] });
         queryClient.invalidateQueries({ queryKey: ["inventory-snapshot"] });
@@ -45,6 +51,41 @@ export const OfflineStatusIndicator = ({ onDark = false }: { onDark?: boolean })
       setSyncing(false);
     }
   }, [accessToken, syncing, organizacion.id, usuario.id, queryClient, checkPending]);
+
+  useEffect(() => {
+    if (!accessToken || !online) return;
+    let active = true;
+    let running = false;
+    const refresh = async () => {
+      if (running) return;
+      running = true;
+      try {
+        const changed = await refreshAwaitingApprovals(accessToken, organizacion.id, usuario.id);
+        if (active && changed) {
+          await checkPending();
+          for (const key of ["movimientos", "inventory-snapshot", "movement-stock-preview"]) {
+            void queryClient.invalidateQueries({ queryKey: [key] });
+          }
+        }
+      } catch { /* Keep the last known state until the server can be reached. */ }
+      finally { running = false; }
+    };
+    void refresh();
+    const timer = setInterval(refresh, 30000);
+    return () => { active = false; clearInterval(timer); };
+  }, [accessToken, online, organizacion.id, usuario.id, queryClient, checkPending]);
+
+  useEffect(() => {
+    if (!accessToken || !navigator.onLine) return;
+    let active = true;
+    void syncAllPending(accessToken, organizacion.id, usuario.id).then((result) => {
+      if (!active || !result.total) return;
+      void checkPending();
+      queryClient.invalidateQueries({ queryKey: ["movimientos"] });
+      queryClient.invalidateQueries({ queryKey: ["inventory-snapshot"] });
+    }).catch(() => { /* Durable records remain available for manual retry. */ });
+    return () => { active = false; };
+  }, [accessToken, organizacion.id, usuario.id, queryClient, checkPending]);
 
   useEffect(() => {
     setOnline(navigator.onLine);
@@ -71,6 +112,7 @@ export const OfflineStatusIndicator = ({ onDark = false }: { onDark?: boolean })
 
   return (
     <div className="flex items-center gap-2">
+      {awaitingApproval > 0 && <span className="text-xs" title="Recibidas por el servidor; el stock cambia al aprobar">{awaitingApproval} recibidas para aprobación</span>}
       {pendingCount > 0 && (
         <button
           onClick={handleSync}
@@ -99,7 +141,7 @@ export const OfflineStatusIndicator = ({ onDark = false }: { onDark?: boolean })
               {rejected.map((movement) => (
                 <div key={movement.uuid_local} className="rounded border p-2">
                   <div>Ítem {movement.id_item} · {movement.cantidad} {movement.unidad_medida}</div>
-                  <div className="text-destructive">{movement.last_error || "Rechazado por el servidor"}</div>
+                  <div className="text-destructive"><SensitiveText category="Dato" value={movement.last_error || "Rechazado por el servidor"} /></div>
                 </div>
               ))}
             </div>

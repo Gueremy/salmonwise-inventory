@@ -1,3 +1,6 @@
+import { SensitiveText } from "@/privacy/EvidenceMode";
+import { parseLocationQr } from "@/lib/locationQr";
+import { OfflinePreparation } from "@/components/OfflinePreparation";
 import { useMemo, useState } from "react";
 import { Box, ArrowDownToLine, ArrowUpFromLine, RefreshCw, QrCode, Search, LogOut } from "lucide-react";
 import { useNavigate } from "react-router-dom";
@@ -9,7 +12,7 @@ import { MovimientoForm } from "@/components/MovimientoForm";
 import { QrScannerModal } from "@/components/qr/QrScannerModal";
 import { OfflineStatusIndicator } from "@/components/OfflineStatusIndicator";
 import { useInventorySnapshot } from "@/hooks/use-inventory-snapshot";
-import { toast } from "sonner";
+import { toast } from "@/privacy/notifications";
 
 type MovementType = "entrada_proveedor" | "salida_produccion" | "traslado_interno";
 
@@ -44,7 +47,11 @@ export default function Operario() {
 
   const handleQrScanned = (code: string) => {
     setSearchTerm(code);
-    const matched = allContainers.find((c) => c.codigo.toLowerCase() === code.toLowerCase());
+    const parsed = parseLocationQr(code);
+    const matches = allContainers.filter((c) => parsed.id ? c.id === parsed.id :
+      Boolean(parsed.code) && c.codigo.toLowerCase() === parsed.code!.toLowerCase());
+    if (matches.length > 1) { toast.error("Código ambiguo: escanea la etiqueta con identificador de ubicación."); return; }
+    const matched = matches[0];
     if (matched) {
       toast.success(`Ubicación encontrada: ${matched.codigo}`);
       navigate(`/zones/${matched.galponId}?focus=${matched.id}`);
@@ -63,7 +70,7 @@ export default function Operario() {
             </div>
             <div>
               <div className="text-xs opacity-80">SalmoTrack v2 · Operador</div>
-              <div className="font-semibold leading-tight">{usuario.nombre}</div>
+              <div className="font-semibold leading-tight"><SensitiveText category="Persona" value={usuario.nombre} /></div>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -83,6 +90,7 @@ export default function Operario() {
       </header>
 
       <main className="p-4 space-y-5 max-w-xl mx-auto">
+        <OfflinePreparation />
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
@@ -143,7 +151,7 @@ export default function Operario() {
               >
                 <div>
                   <div className="font-bold">{item.codigo}</div>
-                  <div className="text-xs text-muted-foreground">{item.producto ?? item.tipoProductoPermitido}</div>
+                  <div className="text-xs text-muted-foreground"><SensitiveText value={item.producto ?? item.tipoProductoPermitido} /></div>
                 </div>
                 <div className="text-right space-y-1">
                   <div className="text-sm font-semibold">{item.ocupacion}%</div>

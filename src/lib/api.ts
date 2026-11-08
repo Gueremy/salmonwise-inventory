@@ -1,4 +1,5 @@
-import { approveMovement, fetchMovementRequests, rejectMovement } from "@/api/movements";
+import { ApiError } from "@/api/errors";
+import { approveMovement, fetchMovementRequests, fetchMovements, rejectMovement } from "@/api/movements";
 import { apiFetch } from "@/api/client";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000";
@@ -74,6 +75,9 @@ export interface ApiGalpon {
 }
 
 export interface ApiContainer {
+  producto_nombre?: string;
+  numero_lote?: string;
+  fecha_vencimiento?: string | null;
   id: string;
   codigo: string;
   id_galpon: string;
@@ -109,6 +113,11 @@ export interface ApiProducto {
 }
 
 export interface ApiMovimientoListItem {
+  id_lote?: string | null;
+  id_ubicacion_origen?: string | null;
+  efecto_stock?: string | null;
+  unidad_medida?: string;
+  id_movimiento_original?: string | null;
   id: string;
   id_container: string;
   id_container_destino: string | null;
@@ -189,7 +198,7 @@ export interface ReportDownloadResult {
 async function parseJson<T>(response: Response): Promise<T> {
   if (!response.ok) {
     const body = await response.json().catch(() => null) as { detail?: string } | null;
-    throw new Error(body?.detail ?? "No se pudo completar la solicitud");
+    throw new ApiError(response.status, body?.detail, response.headers.get("X-Request-ID"));
   }
 
   return response.json() as Promise<T>;
@@ -388,41 +397,50 @@ export async function fetchMovimientos(accessToken: string, query = "") {
   const requestParams = new URLSearchParams({ page: String(page), size: String(size) });
   if (estado) requestParams.set("estado", estado);
   if (pendientes) requestParams.set("pendientes", pendientes);
-  const result = await fetchMovementRequests(accessToken, requestParams.toString());
-  const items: ApiMovimientoListItem[] = result.items.map((request) => ({
+  if (params.get("q")) requestParams.set("q", params.get("q")!);
+  const history = params.get("historial") === "1";
+  const result = history
+    ? await fetchMovements(accessToken, requestParams.toString()).then((page) => ({...page, items: page.items.map((m) => ({
+      ...m, id_usuario_solicitante: m.id_usuario, fecha_creacion: m.fecha_hora,
+      fecha_resolucion: m.fecha_hora, motivo_rechazo: null,
+    }))}))
+    : await fetchMovementRequests(accessToken, requestParams.toString());
+  const items: ApiMovimientoListItem[] = result.items.map((request): ApiMovimientoListItem => ({
     id: request.id,
+    id_lote: request.id_lote,
+    id_ubicacion_origen: request.id_ubicacion_origen,
+    efecto_stock: request.efecto_stock,
+    unidad_medida: request.unidad_medida,
+    id_movimiento_original: "id_movimiento_original" in request ? request.id_movimiento_original as string : null,
     id_container: request.id_ubicacion_origen ?? request.id_ubicacion_destino ?? "",
     id_container_destino: request.id_ubicacion_destino ?? null,
     id_producto: request.id_item,
     id_usuario: request.id_usuario_solicitante,
     id_usuario_aprobador: request.id_usuario_aprobador,
-    tipo: request.id_tipo_movimiento,
+    tipo: request.tipo_codigo ?? "Sin tipo histórico",
     estado: request.fecha_resolucion
       ? request.motivo_rechazo ? "rechazado" : "aprobado"
       : "pendiente",
     cantidad: String(request.cantidad),
-    numero_lote: request.id_lote ?? "—",
+    numero_lote: request.numero_lote ?? "Sin lote registrado",
     fecha_hora: request.fecha_creacion,
     fecha_aprobacion: request.fecha_resolucion,
-    fecha_vencimiento: null,
-    nombre_proveedor: null,
+    fecha_vencimiento: request.fecha_vencimiento ?? null,
+    nombre_proveedor: typeof request.atributos?.proveedor === "object" && request.atributos.proveedor ? String((request.atributos.proveedor as { razon_social?: string }).razon_social ?? "") : null,
     num_guia_despacho: null,
     registro_sanitario: null,
     temperatura_almacen: null,
     motivo_rechazo: request.motivo_rechazo,
     observaciones: request.observaciones ?? null,
     origen: "v2",
-    producto_nombre: request.id_item,
-    container_codigo: request.id_ubicacion_origen ?? request.id_ubicacion_destino ?? "—",
-    container_destino_codigo: request.id_ubicacion_destino ?? null,
-    operario_nombre: request.id_usuario_solicitante,
-    aprobador_nombre: request.id_usuario_aprobador,
+    producto_nombre: request.item_nombre ?? "Producto histórico incompleto",
+    container_codigo: request.ubicacion_origen_codigo ?? request.ubicacion_destino_codigo ?? "—",
+    container_destino_codigo: request.ubicacion_destino_codigo ?? null,
+    operario_nombre: request.usuario_nombre ?? "Operario histórico incompleto",
+    aprobador_nombre: request.aprobador_nombre ?? null,
     galpon_codigo: "",
   }));
-  const search = params.get("q")?.toLowerCase();
-  const filtered = search ? items.filter((item) => [item.producto_nombre, item.numero_lote, item.container_codigo, item.operario_nombre]
-    .some((value) => value.toLowerCase().includes(search))) : items;
-  return { ...result, items: filtered, total: search ? filtered.length : result.total };
+  return { ...result, items };
 }
 
 export async function createMovimiento(accessToken: string, payload: MovimientoPayload) {

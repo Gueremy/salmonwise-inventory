@@ -1,3 +1,6 @@
+import { API_BASE_URL } from "@/api/client";
+import { toast } from "@/privacy/notifications";
+import { SensitiveText } from "@/privacy/EvidenceMode";
 import { useState } from "react";
 import { Package, X, ArrowDownToLine, ArrowUpFromLine, RefreshCw, AlertCircle, Info, Layers } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -31,13 +34,14 @@ export interface DrawerLocation {
 
 interface Props {
   location: DrawerLocation | null;
+  availableLocations?: DrawerLocation[];
   onClose: () => void;
   zoneName?: string;
   onRefresh?: () => void;
 }
 
-export const LocationDetailDrawer = ({ location, onClose, zoneName, onRefresh }: Props) => {
-  const { organizacion, can } = useRole();
+export const LocationDetailDrawer = ({ location, onClose, zoneName, onRefresh, availableLocations = [] }: Props) => {
+  const { organizacion, can, accessToken } = useRole();
   const [openMovement, setOpenMovement] = useState(false);
   const [movementInitialType, setMovementInitialType] = useState<"entrada_proveedor" | "salida_produccion" | "traslado_interno">("entrada_proveedor");
 
@@ -75,7 +79,7 @@ export const LocationDetailDrawer = ({ location, onClose, zoneName, onRefresh }:
       <div className="flex items-start justify-between">
         <div>
           <div className="text-xs text-muted-foreground uppercase tracking-wider font-medium">
-            {zoneName ? `Zona ${zoneName}` : "Ubicación"}
+            <SensitiveText category="Dato" value={zoneName ? `Zona ${zoneName}` : "Ubicación"} />
           </div>
           <h3 className="text-xl font-bold tracking-tight mt-0.5">{location.codigo}</h3>
         </div>
@@ -119,7 +123,7 @@ export const LocationDetailDrawer = ({ location, onClose, zoneName, onRefresh }:
         </div>
         {itemName ? (
           <div className="bg-muted/40 rounded-md p-2.5 text-xs space-y-1">
-            <div className="font-semibold text-foreground">{itemName}</div>
+            <div className="font-semibold text-foreground"><SensitiveText category="Dato" value={itemName} /></div>
             {lotName && <div className="text-muted-foreground">Lote: <span className="text-foreground">{lotName}</span></div>}
             {location.vencimiento && (
               <div className="text-muted-foreground">Vencimiento: <span className="text-foreground">{location.vencimiento}</span></div>
@@ -142,7 +146,7 @@ export const LocationDetailDrawer = ({ location, onClose, zoneName, onRefresh }:
             {Object.entries(location.atributos).map(([k, v]) => (
               <div key={k} className="flex justify-between text-muted-foreground">
                 <span className="capitalize">{k.replace(/_/g, " ")}:</span>
-                <span className="font-medium text-foreground">{String(v)}</span>
+                <span className="font-medium text-foreground"><SensitiveText value={String(v)} /></span>
               </div>
             ))}
           </div>
@@ -185,6 +189,15 @@ export const LocationDetailDrawer = ({ location, onClose, zoneName, onRefresh }:
         </div>
       )}
 
+      {location.id && <Button variant="outline" disabled={!navigator.onLine} onClick={async () => {
+        try {
+          const response = await fetch(`${API_BASE_URL}/api/v2/ubicaciones/${location.id}/qr`, {headers: {Authorization: `Bearer ${accessToken}`}});
+          if (!response.ok) throw new Error("No se pudo generar la etiqueta. Revisa tu sesión y permisos.");
+          const url = URL.createObjectURL(await response.blob());
+          const link = document.createElement("a"); link.href = url; link.download = `ubicacion-${location.id}.svg`; link.click();
+          setTimeout(() => URL.revokeObjectURL(url), 1000);
+        } catch (cause) { toast.error(cause instanceof Error ? cause.message : "No se pudo descargar la etiqueta"); }
+      }}>Descargar etiqueta QR</Button>}
       {/* Modal de formulario de movimiento */}
       {openMovement && (
         <MovimientoForm
@@ -194,7 +207,7 @@ export const LocationDetailDrawer = ({ location, onClose, zoneName, onRefresh }:
             if (!open) onRefresh?.();
           }}
           container={location}
-          availableContainers={[location]}
+          availableContainers={availableLocations}
           initialTipo={movementInitialType}
         />
       )}

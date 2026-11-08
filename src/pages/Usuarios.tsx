@@ -1,3 +1,4 @@
+import { SensitiveText } from "@/privacy/EvidenceMode";
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Save, ShieldCheck, UserCog } from "lucide-react";
@@ -109,8 +110,8 @@ export default function Usuarios() {
               }`}
             >
               <span>
-                <span className="font-medium block">{usuario.nombre}</span>
-                <span className="text-xs text-muted-foreground">{usuario.email}</span>
+                <span className="font-medium block"><SensitiveText category="Persona" value={usuario.nombre} /></span>
+                <span className="text-xs text-muted-foreground"><SensitiveText category="Persona" value={usuario.email} /></span>
               </span>
               <span>{rolLabel[usuario.rol]}</span>
               <span>{usuario.id_sede ? sedeById.get(usuario.id_sede) ?? usuario.id_sede : "Global"}</span>
@@ -161,7 +162,7 @@ export default function Usuarios() {
                 <div className="max-h-56 overflow-y-auto space-y-2 pr-1">
                   {galpones.map((galpon) => (
                     <label key={galpon.id} className="flex items-center justify-between gap-3 rounded-md border border-border px-3 py-2 text-sm">
-                      <span>{galpon.codigo} · {galpon.nombre}</span>
+                      <span>{galpon.codigo} · <SensitiveText category="Dato" value={galpon.nombre} /></span>
                       <input type="checkbox" checked={selectedGalpones.includes(galpon.id)} onChange={() => toggleGalpon(galpon.id)} />
                     </label>
                   ))}

@@ -1,3 +1,4 @@
+import { SensitiveText } from "@/privacy/EvidenceMode";
 import { useRef, useState, Suspense } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
 import { OrbitControls, Html, Edges } from "@react-three/drei";
@@ -78,7 +79,7 @@ const ZoneBox = ({
       </mesh>
       <Html position={[0, 1.3, 0]} center distanceFactor={10}>
         <div className="px-2.5 py-1 rounded-md bg-black/75 text-white text-[11px] font-semibold whitespace-nowrap pointer-events-none backdrop-blur shadow-md border border-white/10">
-          {zone.codigo} · {zone.nombre}
+          {zone.codigo} · <SensitiveText category="Dato" value={zone.nombre} />
           <div className="text-[10px] font-normal opacity-85">
             {countUbicaciones} ubicaciones · {ocupacion}%
           </div>
@@ -163,7 +164,7 @@ export const SiteScene = ({ zones, tipo, siteName, siteId }: Props) => {
           {/* Rótulo del Sitio */}
           <Html position={[0, 3.1, 0]} center>
             <div className="px-3.5 py-1.5 rounded-md bg-primary text-primary-foreground text-xs font-semibold whitespace-nowrap shadow-xl border border-white/20">
-              {siteName}
+              <SensitiveText category="Dato" value={siteName} />
             </div>
           </Html>
 

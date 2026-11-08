@@ -1,3 +1,4 @@
+import { SensitiveText } from "@/privacy/EvidenceMode";
 import { Link } from "react-router-dom";
 import { Ship, Factory, Warehouse, Bell, ArrowRight } from "lucide-react";
 import { ocupacionToEstado, estadoColor } from "@/lib/inventory";
@@ -18,7 +19,7 @@ export default function Sedes() {
     <div className="p-6 animate-fade-in">
       <div className="mb-6">
         <p className="text-sm text-muted-foreground">
-          Vista global de los sitios de {organizacion.nombre}.
+          Vista global de los sitios de <SensitiveText category="Empresa" value={organizacion.nombre} />.
         </p>
         <p className="text-xs text-muted-foreground mt-1">
           {inventoryQuery.isSuccess ? "Datos actualizados desde la API" : inventoryQuery.isError ? "No se pudieron cargar datos desde la API" : "Cargando datos"}
@@ -60,7 +61,7 @@ export default function Sedes() {
                     </div>
                     <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: estadoColor[estado] }} />
                   </div>
-                  <div className="font-semibold text-sm leading-tight mb-1">{sede.nombre}</div>
+                  <div className="font-semibold text-sm leading-tight mb-1"><SensitiveText category="Dato" value={sede.nombre} /></div>
                   <div className="text-xs text-muted-foreground capitalize mb-3">{sede.tipo}</div>
 
                   <div className="text-xs font-medium mb-1 flex justify-between">

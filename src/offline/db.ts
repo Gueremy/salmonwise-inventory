@@ -1,4 +1,5 @@
 import Dexie, { Table } from "dexie";
+import type { OfflinePackage } from "./preparation";
 import { Site } from "@/domain/site";
 import { Zone } from "@/domain/zone";
 import { Location } from "@/domain/location";
@@ -9,6 +10,8 @@ import { Organization } from "@/domain/organization";
 import { MovementTypeConfig } from "@/domain/movement";
 
 export interface LocalMovementRecord {
+  id_movimiento_original?: string;
+  lote_nuevo?: import("@/domain/movement").NewLot;
   uuid_local: string;
   organization_id: string;
   user_id?: string;
@@ -22,6 +25,7 @@ export interface LocalMovementRecord {
   fecha_hora_local: string;
   observaciones?: string | null;
   atributos: Record<string, unknown>;
+  server_state?: string;
   status: "pending" | "syncing" | "synced" | "rejected";
   retry_count: number;
   last_error?: string | null;
@@ -38,6 +42,7 @@ export interface SyncLogRecord {
 }
 
 export class SalmoTrackDB extends Dexie {
+  offlinePackages!: Table<OfflinePackage, string>;
   organizations!: Table<Organization, string>;
   sites!: Table<Site, string>;
   zones!: Table<Zone, string>;
@@ -64,6 +69,7 @@ export class SalmoTrackDB extends Dexie {
       syncLog: "++id, uuid_local, fecha_hora, estado",
     });
     this.version(2).stores({ movementTypes: "id, id_organizacion, codigo" });
+    this.version(3).stores({ offlinePackages: "key, organization_id, user_id" });
   }
 }
 

@@ -3,6 +3,10 @@ import { db, LocalMovementRecord } from "./db";
 export async function queueLocalMovement(
   payload: {
     organizationId: string;
+    id_movimiento_original?: string;
+    lote_nuevo?: import("@/domain/movement").NewLot;
+    fecha_hora_local?: string;
+    uuid_local?: string;
     userId?: string;
     id_tipo_movimiento: string;
     id_item: string;
@@ -15,11 +19,12 @@ export async function queueLocalMovement(
     atributos?: Record<string, unknown>;
   },
 ): Promise<LocalMovementRecord> {
-  const uuid_local = crypto.randomUUID();
+  const uuid_local = payload.uuid_local ?? crypto.randomUUID();
   const record: LocalMovementRecord = {
     uuid_local,
     organization_id: payload.organizationId,
     user_id: payload.userId,
+    id_movimiento_original: payload.id_movimiento_original,
     id_tipo_movimiento: payload.id_tipo_movimiento,
     id_item: payload.id_item,
     id_lote: payload.id_lote,
@@ -27,7 +32,8 @@ export async function queueLocalMovement(
     id_ubicacion_destino: payload.id_ubicacion_destino,
     cantidad: payload.cantidad,
     unidad_medida: payload.unidad_medida,
-    fecha_hora_local: new Date().toISOString(),
+    fecha_hora_local: payload.fecha_hora_local ?? new Date().toISOString(),
+    lote_nuevo: payload.lote_nuevo,
     observaciones: payload.observaciones,
     atributos: payload.atributos ?? {},
     status: "pending",
@@ -43,7 +49,7 @@ export async function getPendingMovements(orgId: string, userId?: string): Promi
   return db.pendingMovements.where("organization_id").equals(orgId)
     .and((movement) => (!userId || movement.user_id === userId)
       && (movement.status === "pending" || movement.status === "syncing"))
-    .toArray();
+    .sortBy("created_at");
 }
 
 export async function getPendingMovementsCount(orgId: string, userId?: string): Promise<number> {
