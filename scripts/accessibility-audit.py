@@ -38,7 +38,7 @@ async def main():
         await page.get_by_label("Correo electronico").fill(os.environ["SALMO_QA_EMAIL"])
         await page.get_by_label("Contrasena").fill(os.environ["SALMO_QA_PASSWORD"])
         await page.get_by_role("button", name="Ingresar").click()
-        await page.wait_for_url("**/dashboard")
+        await page.wait_for_url("**/sites")
         for path in ("/dashboard", "/operario", "/movements", "/reconciliation/import"):
             await page.goto(f"{base_url}{path}", wait_until="networkidle")
             await check(path)

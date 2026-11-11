@@ -35,6 +35,11 @@ export interface InventoryContainerView {
   tipoProductoPermitido: string;
   posicionFila: number;
   posicionCol: number;
+  /** Categoría del ítem principal almacenado, si hay contenido. */
+  categoria: string | null;
+  /** Coordenadas del editor de layout, cuando existen. */
+  layoutX: number | null;
+  layoutZ: number | null;
 }
 
 export interface InventorySnapshot {
@@ -114,6 +119,9 @@ function buildContainer(container: ApiContainer): InventoryContainerView {
     tipoProductoPermitido: container.tipo_producto_permitido,
     posicionFila: container.posicion_fila,
     posicionCol: container.posicion_col,
+    categoria: hasContent ? container.producto_categoria ?? null : null,
+    layoutX: container.layout_x ?? null,
+    layoutZ: container.layout_z ?? null,
   };
 }
 
@@ -189,8 +197,8 @@ export function buildInventorySnapshot(input: {
     .filter((sede) => sede.estado === "activo")
     .map((sede) => {
       const sedeGalpones = galponesBySede.get(sede.id) ?? [];
-      const zoneIds = new Set(sedeGalpones.map((galpon) => galpon.id));
-      const siteLocations = containers.filter((location) => zoneIds.has(location.galponId));
+      // Se reutiliza el índice por zona en vez de recorrer todas las ubicaciones por cada sede.
+      const siteLocations = sedeGalpones.flatMap((galpon) => containersByGalpon.get(galpon.id) ?? []);
 
       return {
         id: sede.id,

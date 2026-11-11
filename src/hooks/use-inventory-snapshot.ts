@@ -12,6 +12,48 @@ import type { OfflinePackage } from "@/offline/preparation";
 import type { Item } from "@/domain/item";
 import type { Lot } from "@/domain/lot";
 
+const coordinate = (value: unknown) => (typeof value === "number" && Number.isFinite(value) ? value : null);
+
+type SnapshotSource = Pick<OfflinePackage, "balances" | "items" | "lots">;
+
+/**
+ * Contenido de cada ubicación a partir de los saldos. Los saldos, ítems y lotes se
+ * indexan una vez: antes se recorrían completos por cada ubicación (costo cuadrático).
+ */
+export function locationContentIndex(data: SnapshotSource) {
+  const itemsById = new Map(data.items.map((item) => [item.id, item]));
+  const lotsById = new Map(data.lots.map((lot) => [lot.id, lot]));
+  const balancesByLocation = new Map<string, SnapshotSource["balances"]>();
+  for (const balance of data.balances) {
+    if (!(Number(balance.cantidad) > 0)) continue;
+    const list = balancesByLocation.get(balance.id_ubicacion);
+    if (list) list.push(balance);
+    else balancesByLocation.set(balance.id_ubicacion, [balance]);
+  }
+
+  return (locationId: string) => {
+    const balances = balancesByLocation.get(locationId) ?? [];
+    const items = balances.map((balance) => itemsById.get(balance.id_item)).filter((item): item is Item => Boolean(item));
+    const lots = balances.map((balance) => (balance.id_lote ? lotsById.get(balance.id_lote) : undefined)).filter((lot): lot is Lot => Boolean(lot));
+    // El modelo 3D representa el ítem con más cantidad en la ubicación.
+    let main: Item | undefined;
+    let mainQuantity = -Infinity;
+    for (const balance of balances) {
+      const item = itemsById.get(balance.id_item);
+      if (item && Number(balance.cantidad) > mainQuantity) {
+        main = item;
+        mainQuantity = Number(balance.cantidad);
+      }
+    }
+    return {
+      producto_nombre: [...new Set(items.map((item) => item.nombre).filter(Boolean))].join(", ") || undefined,
+      producto_categoria: main?.categoria || undefined,
+      numero_lote: [...new Set(lots.map((lot) => lot.numero_lote))].join(", ") || undefined,
+      fecha_vencimiento: lots.map((lot) => lot.fecha_vencimiento).filter(Boolean).sort()[0] ?? null,
+    };
+  };
+}
+
 export function useInventorySnapshot() {
   const { accessToken, organizacion, usuario } = useRole();
 
@@ -34,13 +76,7 @@ export function useInventorySnapshot() {
       }, (cached) => cached);
       const { sites, zones: allZones, locations: allLocations } = data;
       const alerts = navigator.onLine ? await fetchActiveAlerts(accessToken!).catch(() => []) : [];
-      const content = (locationId: string) => {
-        const balances = data.balances.filter((balance) => balance.id_ubicacion === locationId && Number(balance.cantidad) > 0);
-        const items = [...new Set(balances.map((balance) => data.items.find((item) => item.id === balance.id_item)?.nombre).filter(Boolean))];
-        const lots = balances.map((balance) => data.lots.find((lot) => lot.id === balance.id_lote)).filter(Boolean);
-        return { producto_nombre: items.join(", ") || undefined, numero_lote: [...new Set(lots.map((lot) => lot!.numero_lote))].join(", ") || undefined,
-          fecha_vencimiento: lots.map((lot) => lot!.fecha_vencimiento).filter(Boolean).sort()[0] ?? null };
-      };
+      const content = locationContentIndex(data);
 
       return buildInventorySnapshot({
         sedes: sites.map((s) => ({
@@ -63,6 +99,8 @@ export function useInventorySnapshot() {
         })),
         containers: allLocations.map((l) => ({
           ...content(l.id),
+          layout_x: coordinate(l.layout?.x),
+          layout_z: coordinate(l.layout?.z),
           id: l.id,
           codigo: l.codigo,
           id_galpon: l.id_zona,

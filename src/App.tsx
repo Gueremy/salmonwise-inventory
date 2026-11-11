@@ -1,3 +1,4 @@
+import { lazy } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Navigate, Outlet, Route, Routes, useLocation } from "react-router-dom";
 import LocationRoute from "./pages/LocationRoute";
@@ -8,24 +9,26 @@ import { RoleProvider, useRole } from "@/context/RoleContext";
 import { AppLayout } from "@/components/layout/AppLayout";
 
 import Login from "./pages/Login";
-import Dashboard from "./pages/Dashboard";
 import Sedes from "./pages/Sedes";
 import SedeDetalle from "./pages/SedeDetalle";
 import GalponDetalle from "./pages/GalponDetalle";
 import Movimientos from "./pages/Movimientos";
 import Alertas from "./pages/Alertas";
 import Operario from "./pages/Operario";
-import Gerencia from "./pages/Gerencia";
 import Inventario from "./pages/Inventario";
-import Usuarios from "./pages/Usuarios";
-import Reportes from "./pages/Reportes";
-import ReconciliationDashboard from "./pages/reconciliation/ReconciliationDashboard";
-import ImportWizard from "./pages/reconciliation/ImportWizard";
-import LayoutEditor from "./pages/layout/LayoutEditor";
-import Stub from "./pages/Stub";
 import NotFound from "./pages/NotFound";
 import { EvidenceModeControl } from "@/privacy/EvidenceMode";
 import { PwaUpdateNotice } from "@/components/PwaUpdateNotice";
+
+// Pantallas de uso ocasional o con dependencias pesadas (gráficos): se descargan al abrirlas.
+// El Service Worker las precarga igual, así que siguen disponibles sin conexión.
+const Dashboard = lazy(() => import("./pages/Dashboard"));
+const Gerencia = lazy(() => import("./pages/Gerencia"));
+const Usuarios = lazy(() => import("./pages/Usuarios"));
+const Reportes = lazy(() => import("./pages/Reportes"));
+const ReconciliationDashboard = lazy(() => import("./pages/reconciliation/ReconciliationDashboard"));
+const ImportWizard = lazy(() => import("./pages/reconciliation/ImportWizard"));
+const LayoutEditor = lazy(() => import("./pages/layout/LayoutEditor"));
 
 const queryClient = new QueryClient();
 
@@ -66,7 +69,6 @@ const App = () => (
                 <Route path="/alerts" element={<Alertas />} />
                 <Route path="/reports" element={<Reportes />} />
                 <Route path="/users" element={<Usuarios />} />
-                <Route path="/settings" element={<Stub title="Configuración de Organización" />} />
                 <Route path="/reconciliation" element={<ReconciliationDashboard />} />
                 <Route path="/reconciliation/import" element={<ImportWizard />} />
                 <Route path="/layout" element={<LayoutEditor />} />
@@ -81,7 +83,6 @@ const App = () => (
                 <Route path="/gerencia" element={<Gerencia />} />
                 <Route path="/reportes" element={<Navigate to="/reports" replace />} />
                 <Route path="/usuarios" element={<Navigate to="/users" replace />} />
-                <Route path="/config" element={<Navigate to="/settings" replace />} />
               </Route>
             </Route>
             <Route path="*" element={<NotFound />} />
