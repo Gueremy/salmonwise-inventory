@@ -82,8 +82,8 @@ export default function Operario() {
           <div className="flex items-center gap-2">
             <OfflineStatusIndicator onDark />
             <button
-              onClick={() => {
-                logout();
+              onClick={async () => {
+                await logout();
                 navigate("/");
               }}
               className="p-1.5 rounded hover:bg-white/15 ml-1"

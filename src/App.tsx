@@ -19,6 +19,7 @@ import Inventario from "./pages/Inventario";
 import NotFound from "./pages/NotFound";
 import { EvidenceModeControl } from "@/privacy/EvidenceMode";
 import { PwaUpdateNotice } from "@/components/PwaUpdateNotice";
+import { canOpenRoute, OPERARIO_HOME } from "@/lib/navigation";
 
 // Pantallas de uso ocasional o con dependencias pesadas (gráficos): se descargan al abrirlas.
 // El Service Worker las precarga igual, así que siguen disponibles sin conexión.
@@ -34,13 +35,18 @@ const queryClient = new QueryClient();
 
 const ProtectedRoute = () => {
   const location = useLocation();
-  const { authenticated, authReady } = useRole();
+  const { authenticated, authReady, usuario, can, hasModule } = useRole();
 
   if (!authReady) {
     return null;
   }
 
-  return authenticated ? <Outlet /> : <Navigate to="/" state={{ from: location.pathname + location.search }} replace />;
+  if (!authenticated) return <Navigate to="/" state={{ from: location.pathname + location.search }} replace />;
+  if (!canOpenRoute(location.pathname, { rol: usuario.rol, can, hasModule })) {
+    return usuario.rol === "operario" ? <Navigate to={OPERARIO_HOME} replace /> :
+      <div role="alert" className="p-6">No tienes permiso para abrir esta página.</div>;
+  }
+  return <Outlet />;
 };
 
 const App = () => (

@@ -68,6 +68,8 @@ async def main():
         online_response = await created.value
         assert online_response.status == 201, await online_response.text()
         await expect(dialog).not_to_be_visible()
+        await page.get_by_role("button", name="Preparar dispositivo (72 h)").click()
+        await expect(page.get_by_text("Listo sin conexión hasta", exact=False)).to_be_visible(timeout=15000)
 
         if os.environ.get("SALMO_QA_EXTENDED") == "1":
             origin = os.environ.get("SALMO_QA_LOCATION_CODE", "RACK-A-01")
@@ -153,7 +155,10 @@ async def main():
         await page.get_by_label("Código manual (Ubicación o Ítem)").fill(location_code)
         await page.get_by_role("dialog").get_by_role("button", name="Buscar").click()
         await expect(page.get_by_text(f"Ubicación encontrada: {location_code}")).to_be_visible()
-        await page.evaluate("localStorage.setItem('axious.accessToken', 'expired-test-token')")
+        await page.evaluate("""() => {
+            localStorage.setItem('axious.accessToken', 'expired-test-token');
+            localStorage.removeItem('axious.refreshToken');
+        }""")
         await page.goto(f"{base_url}/dashboard")
         await expect(page.get_by_role("heading", name="Ingresar")).to_be_visible(timeout=15000)
         print(json.dumps({"online_status": online_response.status,

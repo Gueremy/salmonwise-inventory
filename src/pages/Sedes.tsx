@@ -47,7 +47,7 @@ export default function Sedes() {
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             {sedes.map((sede) => {
               const Icon = tipoIcon[sede.tipo];
-              const estado = ocupacionToEstado(sede.ocupacion);
+              const estado = ocupacionToEstado(sede.ocupacion, organizacion.configuracion);
 
               return (
                 <Link

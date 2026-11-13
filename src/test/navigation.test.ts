@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { DEFAULT_ROLE_PERMISSIONS } from "@/context/RoleContext";
-import { homePathFor, isOperarioLayoutPath, safeInternalPath, visibleNavItems, type NavRule } from "@/lib/navigation";
+import { canOpenRoute, homePathFor, isOperarioLayoutPath, safeInternalPath, visibleNavItems, type NavRule } from "@/lib/navigation";
 
 const menu: NavRule[] = [
   { to: "/operario", roles: ["operario"] },
@@ -74,5 +74,27 @@ describe("menú lateral", () => {
     expect(menuFor("admin_sede", [])).not.toContain("/reconciliation");
     expect(menuFor("super_admin")).toContain("/users");
     expect(menuFor("admin_sede")).not.toContain("/operario");
+  });
+});
+
+describe("acceso directo por URL", () => {
+  const context = (rol: string, permissions: string[], modules: string[] = []) => ({
+    rol,
+    can: (permission: string) => permissions.includes(permission),
+    hasModule: (moduleId: string) => modules.includes(moduleId),
+  });
+
+  it("impide abrir pantallas administrativas sin permiso aunque se escriba la URL", () => {
+    const worker = context("operario", DEFAULT_ROLE_PERMISSIONS.operario);
+    expect(canOpenRoute("/users", worker)).toBe(false);
+    expect(canOpenRoute("/layout", worker)).toBe(false);
+    expect(canOpenRoute("/dashboard", worker)).toBe(false);
+    expect(canOpenRoute("/sites/123", worker)).toBe(true);
+  });
+
+  it("exige permiso y módulo para conciliación", () => {
+    const admin = context("admin_sede", DEFAULT_ROLE_PERMISSIONS.admin_sede);
+    expect(canOpenRoute("/reconciliation/import", admin)).toBe(false);
+    expect(canOpenRoute("/reconciliation/import", context("admin_sede", DEFAULT_ROLE_PERMISSIONS.admin_sede, ["importacion"]))).toBe(true);
   });
 });

@@ -54,6 +54,10 @@ export default function Login() {
     try {
       const tokens = await login(email, password);
       const session = await fetchSession(tokens.access_token);
+      const previousUserId = sessionStorage.getItem("axious.lastUserId");
+      sessionStorage.removeItem("axious.lastUserId");
+      const returnPath = previousUserId && previousUserId !== session.usuario.id && !destination?.startsWith("/locations/")
+        ? null : destination;
       const operational = session.configuracion_operativa;
       const usuario: Usuario = {
         id: session.usuario.id,
@@ -96,7 +100,7 @@ export default function Login() {
       setAccessToken(tokens.access_token);
       setAuthenticated(true);
       setOnline(true);
-      navigate(destination ?? homePathFor(usuario.rol));
+      navigate(returnPath ?? homePathFor(usuario.rol));
     } catch (err) {
       setError(err instanceof Error ? err.message : "No se pudo iniciar sesion");
       setAuthenticated(false);

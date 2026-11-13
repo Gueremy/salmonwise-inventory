@@ -8,6 +8,7 @@ import { detectWebGL } from "@/components/three/sceneQuality";
 import { StatusLegend } from "@/components/StatusLegend";
 import { Bell, Box, Ship, Factory, Warehouse } from "lucide-react";
 import { useInventorySnapshot } from "@/hooks/use-inventory-snapshot";
+import { useRole } from "@/context/RoleContext";
 
 const tipoIcon = { embarcacion: Ship, planta: Factory, bodega: Warehouse };
 
@@ -21,6 +22,7 @@ const SceneUnavailable = () => (
 );
 
 export default function SedeDetalle() {
+  const { organizacion } = useRole();
   const { id } = useParams();
   const navigate = useNavigate();
   const inventoryQuery = useInventorySnapshot();
@@ -68,7 +70,7 @@ export default function SedeDetalle() {
                   <span className="font-medium">{sede.ocupacion}%</span>
                 </div>
                 <div className="h-2 bg-muted rounded-full overflow-hidden">
-                  <div className="h-full" style={{ width: `${sede.ocupacion}%`, backgroundColor: estadoColor[ocupacionToEstado(sede.ocupacion)] }} />
+                  <div className="h-full" style={{ width: `${sede.ocupacion}%`, backgroundColor: estadoColor[ocupacionToEstado(sede.ocupacion, organizacion.configuracion)] }} />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-3 pt-3 border-t border-border">
@@ -94,7 +96,7 @@ export default function SedeDetalle() {
             <h3 className="text-sm font-semibold mb-3">Zonas</h3>
             <div className="space-y-2">
               {sedeGalpones.map((galpon) => {
-                const estado = ocupacionToEstado(galpon.ocupacion_prom);
+                const estado = ocupacionToEstado(galpon.ocupacion_prom, organizacion.configuracion);
 
                 return (
                   <button

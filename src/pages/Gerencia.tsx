@@ -95,7 +95,7 @@ export default function Gerencia() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {sedes.map((s) => {
           const Icon = tipoIcon[s.tipo] ?? Building2;
-          const est = ocupacionToEstado(s.ocupacion);
+          const est = ocupacionToEstado(s.ocupacion, organizacion.configuracion);
           return (
             <div key={s.id} className="bg-card border border-border rounded-lg p-5 shadow-sm">
               <div className="flex items-start justify-between mb-3">

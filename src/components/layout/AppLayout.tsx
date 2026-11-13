@@ -7,6 +7,16 @@ import { OPERARIO_HOME, isOperarioLayoutPath } from "@/lib/navigation";
 
 const titles: Record<string, string> = {
   "/dashboard": "Dashboard",
+  "/sites": "Lugares",
+  "/zones": "Zona",
+  "/locations": "Ubicación",
+  "/movements": "Movimientos",
+  "/alerts": "Alertas",
+  "/reports": "Reportes",
+  "/users": "Usuarios",
+  "/reconciliation": "Conciliación ERP",
+  "/layout": "Editor de layout",
+  "/gerencia": "Gerencia",
   "/sedes": "Vista Global de Sedes",
   "/movimientos": "Movimientos",
   "/alertas": "Alertas",

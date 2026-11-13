@@ -79,6 +79,7 @@ export function useInventorySnapshot() {
       const content = locationContentIndex(data);
 
       return buildInventorySnapshot({
+        config: organizacion.configuracion,
         sedes: sites.map((s) => ({
           id: s.id,
           nombre: s.nombre,

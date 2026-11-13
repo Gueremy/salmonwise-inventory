@@ -43,6 +43,21 @@ export interface NavContext {
   hasModule: (moduleId: string) => boolean;
 }
 
+/** Las mismas capacidades del menú se aplican a las rutas abiertas por URL. */
+export function canOpenRoute(pathname: string, ctx: NavContext): boolean {
+  if (pathname === OPERARIO_HOME) return ctx.can("movimiento:create");
+  if (/^\/(dashboard|gerencia)(\/|$)/.test(pathname)) return ctx.can("dashboard:read");
+  if (/^\/(users|usuarios)(\/|$)/.test(pathname)) return ctx.can("rbac:manage");
+  if (/^\/layout(\/|$)/.test(pathname)) return ctx.can("sitio:write");
+  if (/^\/reconciliation(\/|$)/.test(pathname)) return ctx.can("reconciliation:manage") && ctx.hasModule("importacion");
+  if (/^\/(reports|reportes)(\/|$)/.test(pathname)) return ctx.can("reporte:export");
+  if (/^\/(movements|movimientos)(\/|$)/.test(pathname)) return ctx.can("movimiento:create") || ctx.can("movimiento:approve");
+  if (/^\/(locations)(\/|$)/.test(pathname)) return ctx.can("ubicacion:read");
+  if (/^\/(zones|galpon)(\/|$)/.test(pathname)) return ctx.can("zona:read");
+  if (/^\/(sites|sedes|inventario)(\/|$)/.test(pathname)) return ctx.can("sitio:read");
+  return true;
+}
+
 /**
  * Filtra el menú lateral. Además de permisos y módulos, al operario se le ocultan
  * las entradas que el layout le devolvería a /operario.
