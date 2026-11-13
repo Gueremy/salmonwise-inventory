@@ -76,6 +76,11 @@ export interface ApiGalpon {
 
 export interface ApiContainer {
   producto_nombre?: string;
+  /** Categoría del ítem principal; la vista 3D la usa para elegir el modelo de carga. */
+  producto_categoria?: string;
+  /** Coordenadas guardadas por el editor de layout. */
+  layout_x?: number | null;
+  layout_z?: number | null;
   numero_lote?: string;
   fecha_vencimiento?: string | null;
   id: string;

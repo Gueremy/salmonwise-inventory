@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState, ReactNode, useMemo, useCallback, useRef } from "react";
-import { refreshToken } from "@/api/auth";
+import { refreshToken, logout as revokeSession } from "@/api/auth";
+import { clearOfflineDataOnLogout } from "@/offline/preparation";
 import { Organization, DEFAULT_THRESHOLDS, DEFAULT_THEME } from "../domain/organization";
 import { registerUnauthorizedHandler } from "@/api/client";
 import { applyOrganizationPalette } from "@/domain/theme";
@@ -103,7 +104,7 @@ interface RoleContextType {
   setAccessToken: (token: string | null) => void;
   online: boolean;
   setOnline: (b: boolean) => void;
-  logout: () => void;
+  logout: () => Promise<void>;
   authReady: boolean;
   can: (permission: string) => boolean;
   hasModule: (moduleId: string) => boolean;
@@ -167,7 +168,11 @@ export const RoleProvider = ({ children }: { children: ReactNode }) => {
     localStorage.removeItem(STORAGE_ORG_KEY);
   }, [authenticated, accessToken, usuario, organizacion]);
 
-  const logout = useCallback(() => {
+  const logout = useCallback(async () => {
+    const previousUser = usuario;
+    const previousToken = accessToken;
+    const previousRefresh = localStorage.getItem("axious.refreshToken");
+    if (previousUser.id) sessionStorage.setItem("axious.lastUserId", previousUser.id);
     localStorage.removeItem("axious.refreshToken");
     setEvidenceEnabled(false);
     queryClient.clear();
@@ -176,14 +181,19 @@ export const RoleProvider = ({ children }: { children: ReactNode }) => {
     setUsuario(DEFAULT_USER);
     setOrganizacion(DEFAULT_ORGANIZATION);
     setModulosActivos(["offline_sync", "importacion", "fefo"]);
-  }, [queryClient]);
+    await Promise.allSettled([
+      clearOfflineDataOnLogout(previousUser.id_organizacion ?? "", previousUser.id),
+      previousToken && previousRefresh && navigator.onLine
+        ? revokeSession(previousToken, previousRefresh) : Promise.resolve(),
+    ]);
+  }, [queryClient, usuario, accessToken]);
 
   useEffect(() => registerUnauthorizedHandler(async (requestToken) => {
     // Una respuesta tardía de la cuenta anterior no debe cerrar la sesión nueva.
     if (!requestToken || requestToken !== accessToken) return null;
     if (refreshing.current) return refreshing.current;
     const refresh = localStorage.getItem("axious.refreshToken");
-    if (!refresh) { logout(); return null; }
+    if (!refresh) { await logout(); return null; }
     refreshing.current = refreshToken(refresh).then((tokens) => {
       // A logout/account switch while renewal was in flight must not restore the old account.
       if (localStorage.getItem(STORAGE_TOKEN_KEY) !== requestToken) return null;
@@ -192,7 +202,7 @@ export const RoleProvider = ({ children }: { children: ReactNode }) => {
       localStorage.setItem("axious.refreshToken", tokens.refresh_token);
       return tokens.access_token;
     }).catch((error) => {
-      if (!(error instanceof TypeError) && localStorage.getItem(STORAGE_TOKEN_KEY) === requestToken) logout();
+      if (!(error instanceof TypeError) && localStorage.getItem(STORAGE_TOKEN_KEY) === requestToken) void logout();
       return null;
     }).finally(() => { refreshing.current = null; });
     return refreshing.current;

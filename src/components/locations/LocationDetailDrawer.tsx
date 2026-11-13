@@ -92,7 +92,7 @@ export const LocationDetailDrawer = ({ location, onClose, zoneName, onRefresh, a
       </div>
 
       <div className="flex items-center gap-2">
-        <StatusBadge estado={location.estado} />
+        <StatusBadge estado={visual.estado} />
         <span className="text-xs text-muted-foreground">· {visual.porcentaje}% ocupado</span>
       </div>
 

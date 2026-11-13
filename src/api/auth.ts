@@ -77,9 +77,12 @@ export async function refreshToken(refreshTokenValue: string): Promise<AuthToken
 }
 
 export async function logout(token: string, refreshTokenValue: string): Promise<void> {
-  await apiFetch<void>("/auth/logout", {
+  // Logout must never invoke the global 401 refresh handler while local tokens are being cleared.
+  const response = await fetch(`${API_BASE_URL}/auth/logout`, {
     method: "POST",
-    token,
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
     body: JSON.stringify({ refresh_token: refreshTokenValue }),
+    signal: AbortSignal.timeout(3000),
   });
+  if (!response.ok) throw new Error("No se pudo revocar la sesión remota");
 }

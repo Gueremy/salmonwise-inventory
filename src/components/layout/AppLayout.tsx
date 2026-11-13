@@ -2,9 +2,21 @@ import { Outlet, useLocation, Navigate } from "react-router-dom";
 import { Sidebar } from "./Sidebar";
 import { Header } from "./Header";
 import { useRole } from "@/context/RoleContext";
+import { RouteBoundary } from "./RouteBoundary";
+import { OPERARIO_HOME, isOperarioLayoutPath } from "@/lib/navigation";
 
 const titles: Record<string, string> = {
   "/dashboard": "Dashboard",
+  "/sites": "Lugares",
+  "/zones": "Zona",
+  "/locations": "Ubicación",
+  "/movements": "Movimientos",
+  "/alerts": "Alertas",
+  "/reports": "Reportes",
+  "/users": "Usuarios",
+  "/reconciliation": "Conciliación ERP",
+  "/layout": "Editor de layout",
+  "/gerencia": "Gerencia",
   "/sedes": "Vista Global de Sedes",
   "/movimientos": "Movimientos",
   "/alertas": "Alertas",
@@ -17,8 +29,8 @@ export const AppLayout = () => {
   const { pathname } = useLocation();
 
   // Operario tiene su propia vista mobile
-  if (usuario.rol === "operario" && !/^\/(sites|zones|locations|movements|inventario)(\/|$)/.test(pathname)) {
-    return <Navigate to="/operario" replace />;
+  if (usuario.rol === "operario" && !isOperarioLayoutPath(pathname)) {
+    return <Navigate to={OPERARIO_HOME} replace />;
   }
 
   const title = Object.entries(titles).find(([k]) => pathname.startsWith(k))?.[1];
@@ -29,7 +41,9 @@ export const AppLayout = () => {
       <div className="flex-1 flex flex-col min-w-0">
         <Header title={title} />
         <main className="flex-1 overflow-auto focus:outline focus:outline-2 focus:outline-primary" tabIndex={0}>
-          <Outlet />
+          <RouteBoundary resetKey={pathname}>
+            <Outlet />
+          </RouteBoundary>
         </main>
       </div>
     </div>

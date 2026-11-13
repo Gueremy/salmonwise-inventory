@@ -5,7 +5,7 @@ import { rolLabel, useRole } from "@/context/RoleContext";
 import { ChevronDown, LogOut, Menu } from "lucide-react";
 import { OfflineStatusIndicator } from "@/components/OfflineStatusIndicator";
 import { Sidebar } from "./Sidebar";
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -28,6 +28,7 @@ export const Header = ({ title }: { title?: string }) => {
             <Menu className="h-5 w-5" />
           </SheetTrigger>
           <SheetContent side="left" className="w-72 p-0">
+            <SheetTitle className="sr-only">Menú de navegación</SheetTitle>
             <Sidebar className="w-full h-full" onNavigate={() => setMenuOpen(false)} />
           </SheetContent>
         </Sheet>
@@ -44,18 +45,18 @@ export const Header = ({ title }: { title?: string }) => {
             </div>
             <div className="hidden sm:block text-left">
               <div className="font-medium leading-tight"><SensitiveText category="Persona" value={usuario.nombre} /></div>
-              <div className="text-[11px] text-muted-foreground leading-tight">{rolLabel[usuario.rol]}</div>
+              <div className="text-[11px] text-muted-foreground leading-tight">{rolLabel[usuario.rol] ?? usuario.rol}</div>
             </div>
             <ChevronDown className="hidden sm:block h-4 w-4 text-muted-foreground" />
           </DropdownMenuTrigger>
 
           <DropdownMenuContent align="end" className="w-64">
-            <DropdownMenuLabel>{rolLabel[usuario.rol]}</DropdownMenuLabel>
+            <DropdownMenuLabel>{rolLabel[usuario.rol] ?? usuario.rol}</DropdownMenuLabel>
             <DropdownMenuItem disabled>{usuario.sede}</DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem
-              onClick={() => {
-                logout();
+              onClick={async () => {
+                await logout();
                 navigate("/");
               }}
               className="text-destructive"

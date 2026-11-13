@@ -9,6 +9,7 @@ import { useRole, Usuario } from "@/context/RoleContext";
 import { fetchHealth, login } from "@/lib/api";
 import { fetchSession } from "@/api/auth";
 import { DEFAULT_THEME } from "@/domain/organization";
+import { homePathFor, safeInternalPath } from "@/lib/navigation";
 
 const sedeLabel = (idSede: string | null) => idSede ?? "Global";
 
@@ -16,8 +17,8 @@ export default function Login() {
   const navigate = useNavigate();
   const location = useLocation();
   const requested = (location.state as {from?: string} | null)?.from;
-  const destination = requested?.startsWith("/") && !requested.startsWith("//") ? requested : null;
-  const { setUsuario, setOrganizacion, setModulosActivos, setAuthenticated, setAccessToken, authenticated, setOnline } = useRole();
+  const destination = safeInternalPath(requested);
+  const { usuario: usuarioActual, setUsuario, setOrganizacion, setModulosActivos, setAuthenticated, setAccessToken, authenticated, setOnline } = useRole();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -26,9 +27,9 @@ export default function Login() {
 
   useEffect(() => {
     if (authenticated) {
-      navigate(destination ?? "/dashboard", { replace: true });
+      navigate(destination ?? homePathFor(usuarioActual.rol), { replace: true });
     }
-  }, [authenticated, navigate, destination]);
+  }, [authenticated, navigate, destination, usuarioActual.rol]);
 
   useEffect(() => {
     let cancelled = false;
@@ -53,6 +54,10 @@ export default function Login() {
     try {
       const tokens = await login(email, password);
       const session = await fetchSession(tokens.access_token);
+      const previousUserId = sessionStorage.getItem("axious.lastUserId");
+      sessionStorage.removeItem("axious.lastUserId");
+      const returnPath = previousUserId && previousUserId !== session.usuario.id && !destination?.startsWith("/locations/")
+        ? null : destination;
       const operational = session.configuracion_operativa;
       const usuario: Usuario = {
         id: session.usuario.id,
@@ -95,7 +100,7 @@ export default function Login() {
       setAccessToken(tokens.access_token);
       setAuthenticated(true);
       setOnline(true);
-      navigate(destination ?? (usuario.rol === "operario" ? "/operario" : usuario.rol === "gerencia" ? "/gerencia" : "/dashboard"));
+      navigate(returnPath ?? homePathFor(usuario.rol));
     } catch (err) {
       setError(err instanceof Error ? err.message : "No se pudo iniciar sesion");
       setAuthenticated(false);
