@@ -75,7 +75,7 @@ export default function Operario() {
               <Box className="h-5 w-5" />
             </div>
             <div>
-              <div className="text-xs opacity-80">SalmoTrack v2 · Operador</div>
+              <div className="text-xs opacity-80">SalmoTrack v3 · Operador</div>
               <div className="font-semibold leading-tight"><SensitiveText category="Persona" value={usuario.nombre} /></div>
             </div>
           </div>
@@ -191,6 +191,11 @@ export default function Operario() {
               </button>
             )}
           </div>
+          {!searchTerm.trim() && allContainers.length > items.length && (
+            <p className="mb-2 px-1 text-xs text-muted-foreground">
+              Mostrando {items.length} de {allContainers.length} ubicaciones. Usa la búsqueda para encontrar las demás.
+            </p>
+          )}
           <div className="space-y-2">
             {items.map((item) => (
               <Link
