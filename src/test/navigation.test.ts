@@ -46,6 +46,7 @@ describe("pantalla inicial por rol", () => {
     expect(safeInternalPath("/zones/1?focus=2")).toBe("/zones/1?focus=2");
     expect(safeInternalPath("//evil.example")).toBeNull();
     expect(safeInternalPath("https://evil.example")).toBeNull();
+    expect(safeInternalPath("/\\evil.example")).toBeNull();
     expect(safeInternalPath(undefined)).toBeNull();
   });
 });

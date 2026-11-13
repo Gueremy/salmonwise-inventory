@@ -27,7 +27,8 @@ export function isOperarioLayoutPath(pathname: string): boolean {
 /** Destino pedido antes del login; solo se aceptan rutas internas. */
 export function safeInternalPath(requested: string | null | undefined): string | null {
   if (!requested) return null;
-  return requested.startsWith("/") && !requested.startsWith("//") ? requested : null;
+  return requested.startsWith("/") && !requested.startsWith("//") && !/[\\\u0000-\u001f]/.test(requested)
+    ? requested : null;
 }
 
 export interface NavRule {
