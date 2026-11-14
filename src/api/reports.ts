@@ -1,4 +1,4 @@
-import { API_BASE_URL } from "./client";
+import { apiFetchResponse } from "./client";
 
 export interface ReportDownloadResult {
   blob: Blob;
@@ -35,14 +35,10 @@ export async function downloadReport(
   }
   const fetchPage = async (path = endpoint) => {
     const queryString = params.toString();
-    const response = await fetch(`${API_BASE_URL}${path}${queryString ? `?${queryString}` : ""}`, {
-      headers: { Authorization: `Bearer ${token}` },
+    return apiFetchResponse(`${path}${queryString ? `?${queryString}` : ""}`, {
+      token,
+      headers: { Accept: "*/*" },
     });
-    if (!response.ok) {
-      const errorJson = await response.json().catch(() => null);
-      throw new Error(errorJson?.detail ?? "No se pudo generar el reporte");
-    }
-    return response;
   };
   let response = await fetchPage();
 
