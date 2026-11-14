@@ -42,8 +42,8 @@ describe("Login", () => {
 
     expect(screen.queryByText(/Usuario demo/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/Skretting2026!/i)).not.toBeInTheDocument();
-    expect(screen.getByLabelText(/Correo electronico/i)).toHaveValue("");
-    expect(screen.getByLabelText(/Contrasena/i)).toHaveValue("");
+    expect(screen.getByLabelText(/Correo electrónico/i)).toHaveValue("");
+    expect(screen.getByLabelText(/Contraseña/i)).toHaveValue("");
   });
 
   it("keeps submit disabled until the user enters credentials", async () => {
@@ -54,10 +54,10 @@ describe("Login", () => {
     const submit = screen.getByRole("button", { name: /Ingresar/i });
     expect(submit).toBeDisabled();
 
-    fireEvent.change(screen.getByLabelText(/Correo electronico/i), {
+    fireEvent.change(screen.getByLabelText(/Correo electrónico/i), {
       target: { value: "usuario@empresa.cl" },
     });
-    fireEvent.change(screen.getByLabelText(/Contrasena/i), {
+    fireEvent.change(screen.getByLabelText(/Contraseña/i), {
       target: { value: "secreto" },
     });
 
