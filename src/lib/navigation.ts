@@ -68,6 +68,7 @@ export function visibleNavItems<T extends NavRule>(items: readonly T[], ctx: Nav
     if (item.roles && !item.roles.includes(ctx.rol)) return false;
     if (item.permission && !ctx.can(item.permission)) return false;
     if (item.module && !ctx.hasModule(item.module)) return false;
+    if (!canOpenRoute(item.to, ctx)) return false;
     if (ctx.rol === "operario" && item.to !== OPERARIO_HOME && !isOperarioLayoutPath(item.to)) return false;
     return true;
   });

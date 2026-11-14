@@ -65,7 +65,7 @@ const App = () => (
               <Route element={<AppLayout />}>
                 <Route path="/dashboard" element={<Dashboard />} />
                 
-                {/* Rutas genéricas SalmoTrack v2 */}
+                {/* Rutas principales SalmoTrack v3 */}
                 <Route path="/sites" element={<Sedes />} />
                 <Route path="/sites/:id" element={<SedeDetalle />} />
                 <Route path="/sites/:siteId/zones/:id" element={<GalponDetalle />} />

@@ -76,6 +76,18 @@ describe("menú lateral", () => {
     expect(menuFor("super_admin")).toContain("/users");
     expect(menuFor("admin_sede")).not.toContain("/operario");
   });
+
+  it("oculta conciliación cuando el módulo existe pero falta su permiso", () => {
+    const permissions = new Set(DEFAULT_ROLE_PERMISSIONS.jefe_bodega);
+    permissions.delete("reconciliation:manage");
+    const ctx = {
+      rol: "jefe_bodega",
+      can: (permission: string) => permissions.has(permission),
+      hasModule: (moduleId: string) => moduleId === "importacion",
+    };
+    expect(visibleNavItems(menu, ctx).map((item) => item.to)).not.toContain("/reconciliation");
+    expect(canOpenRoute("/reconciliation", ctx)).toBe(false);
+  });
 });
 
 describe("acceso directo por URL", () => {
