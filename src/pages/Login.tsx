@@ -126,7 +126,7 @@ export default function Login() {
             <div className="h-11 w-11 rounded-lg bg-white/15 backdrop-blur flex items-center justify-center">
               <Box className="h-6 w-6" />
             </div>
-            <div className="font-bold text-xl">Axious</div>
+            <div className="font-bold text-xl">SalmoTrack</div>
           </div>
           <div>
             <h2 className="text-4xl font-bold leading-tight mb-3">
@@ -148,7 +148,7 @@ export default function Login() {
             <div className="h-10 w-10 rounded-md bg-primary text-primary-foreground flex items-center justify-center">
               <Box className="h-5 w-5" />
             </div>
-            <div className="font-bold text-lg">Axious</div>
+            <div className="font-bold text-lg">SalmoTrack</div>
           </div>
 
           <div>
@@ -158,12 +158,12 @@ export default function Login() {
 
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="email">Correo electronico</Label>
+              <Label htmlFor="email">Correo electrónico</Label>
               <Input id="email" type="email" value={email} placeholder="nombre@empresa.cl" onChange={(e) => setEmail(e.target.value)} />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="pwd">Contrasena</Label>
-              <Input id="pwd" type="password" value={password} placeholder="Ingresa tu contrasena" onChange={(e) => setPassword(e.target.value)} />
+              <Label htmlFor="pwd">Contraseña</Label>
+              <Input id="pwd" type="password" value={password} placeholder="Ingresa tu contraseña" onChange={(e) => setPassword(e.target.value)} />
             </div>
             <div className="rounded-md border border-border bg-muted/30 px-3 py-2 text-xs text-muted-foreground space-y-1">
               <div>
@@ -183,7 +183,7 @@ export default function Login() {
           </Button>
 
           <p className="text-xs text-muted-foreground text-center">
-            SalmoTrack v2 · Plataforma de inventario
+            SalmoTrack v3 · Plataforma de inventario
           </p>
         </div>
       </div>

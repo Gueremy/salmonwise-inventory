@@ -51,7 +51,7 @@ export const Sidebar = ({ className = "", onNavigate }: { className?: string; on
             <Box className="h-5 w-5" />
           </div>
           <div>
-            <div className="font-bold tracking-tight">SalmoTrack v2</div>
+            <div className="font-bold tracking-tight">SalmoTrack v3</div>
             <div className="text-[11px] text-sidebar-foreground/70 truncate max-w-[150px]">
               <SensitiveText category="Empresa" value={usuario.organizacion_nombre ?? "Plataforma Visual"} />
             </div>
@@ -85,7 +85,7 @@ export const Sidebar = ({ className = "", onNavigate }: { className?: string; on
         ))}
       </nav>
       <div className="px-4 py-3 border-t border-sidebar-border text-xs text-sidebar-foreground/90 flex items-center justify-between">
-        <span>v2.0.0</span>
+        <span>v3.0.0</span>
         <span className="text-[10px] uppercase tracking-wider bg-sidebar-accent px-1.5 py-0.5 rounded">
           {usuario.rol}
         </span>
