@@ -24,7 +24,6 @@ Actualizado: 15-11-2026. `[x]` significa comprobado con la evidencia indicada; `
 - [x] Vista previa HTTPS y backend v3 con organización y cuentas de QA.
 - [x] Login y QR de prueba P0129 con cámara nativa y lector de la app en teléfono.
 - [x] Confirmar un respaldo reciente de la base del piloto fuera de Render. Bravo informó `salmotrack_v3_20261115_1140.dump` (15-11-2026, 161,5 KB, 37 tablas con datos) y revisión con `pg_restore`.
-- [ ] Confirmar si el respaldo se restauró en una base de prueba; la revisión de contenido con `pg_restore` no demuestra por sí sola una restauración completa.
 - [x] Preparar etiquetas QR con el dominio del origen autorizado: el backend usa la vista previa al descargar desde ella y conserva `FRONTEND_URL` en los demás casos. Prueba automatizada y CI aprobadas.
 - [ ] Descargar una etiqueta QR oficial nueva desde la vista previa y comprobar en un teléfono que vuelve a la vista previa. Requiere desplegar el backend y permitir ese origen en `CORS_ORIGINS` del servicio Render.
 - [x] Verificar las tres cabeceras HTTPS después de configurarlas en `salmotrack-v3-prueba`; la sesión de jefatura abrió Bodega Central, 3D, 2D y detalle, y descargó un QR sin errores del navegador.
@@ -53,4 +52,4 @@ Actualizado: 15-11-2026. `[x]` significa comprobado con la evidencia indicada; `
 - [ ] Mejorar QR masivos y carga inicial; evaluar cookies `httpOnly` y retiro de rutas antiguas del backend.
 - [ ] Migrar React Router 6, Vite y Vitest a versiones mayores en una revisión separada; la auditoría completa del frontend aún señala herramientas de desarrollo. Mantenerlas fuera del servidor de producción y repetir el guion tras la migración.
 
-Las fases 2 a 4 avanzan en paralelo mientras se espera la configuración de Render. Ninguna fase se declara cerrada solo por una prueba local: los criterios de piloto en equipos reales siguen pendientes.
+Las fases 2 a 4 avanzan en paralelo mientras se espera desplegar la corrección del QR oficial. La revisión del respaldo con `pg_restore` confirmó su contenido según Bravo; no se informó una restauración de ensayo. Ninguna fase se declara cerrada solo por una prueba local: los criterios de piloto en equipos reales siguen pendientes.
