@@ -28,6 +28,7 @@ interface NavItem {
 const items: NavItem[] = [
   { to: "/operario", label: "Operaciones", icon: Smartphone, roles: ["operario"] },
   { to: "/sites", label: "Lugares", icon: Map },
+  { to: "/gerencia", label: "Resumen gerencial", icon: LayoutDashboard, permission: "dashboard:read", roles: ["gerencia"] },
   { to: "/movements", label: "Movimientos", icon: ClipboardList },
   { to: "/reconciliation", label: "Conciliación ERP", icon: Layers, module: "importacion" },
   { to: "/layout", label: "Editor Layout", icon: Boxes, permission: "sitio:write" },
