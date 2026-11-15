@@ -6,15 +6,17 @@ interface Props {
   tipo: TipoSede | string;
   sedeNombre: string;
   sedeId?: string;
+  onUnavailable?: () => void;
 }
 
-export const SedeScene = ({ galpones, tipo, sedeNombre, sedeId }: Props) => {
+export const SedeScene = ({ galpones, tipo, sedeNombre, sedeId, onUnavailable }: Props) => {
   return (
     <SiteScene
       zones={galpones}
       tipo={tipo}
       siteName={sedeNombre}
       siteId={sedeId}
+      onUnavailable={onUnavailable}
     />
   );
 };

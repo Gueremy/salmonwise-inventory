@@ -9,10 +9,11 @@ import {
   Bell,
   BarChart3,
   Users,
-  Settings,
   Layers,
+  Smartphone,
 } from "lucide-react";
 import { useRole } from "@/context/RoleContext";
+import { visibleNavItems } from "@/lib/navigation";
 
 interface NavItem {
   to: string;
@@ -25,26 +26,23 @@ interface NavItem {
 }
 
 const items: NavItem[] = [
-  { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { to: "/sites", label: "Sitios y Zonas", icon: Map },
+  { to: "/operario", label: "Operaciones", icon: Smartphone, roles: ["operario"] },
+  { to: "/sites", label: "Lugares", icon: Map },
+  { to: "/gerencia", label: "Resumen gerencial", icon: LayoutDashboard, permission: "dashboard:read", roles: ["gerencia"] },
   { to: "/movements", label: "Movimientos", icon: ClipboardList },
   { to: "/reconciliation", label: "Conciliación ERP", icon: Layers, module: "importacion" },
   { to: "/layout", label: "Editor Layout", icon: Boxes, permission: "sitio:write" },
   { to: "/alerts", label: "Alertas", icon: Bell },
   { to: "/reports", label: "Reportes", icon: BarChart3 },
+  // El backend responde 403 a /api/v2/dashboard/* sin este permiso.
+  { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard, permission: "dashboard:read" },
   { to: "/users", label: "Usuarios", icon: Users, permission: "rbac:manage" },
-  { to: "/settings", label: "Configuración", icon: Settings },
 ];
 
 export const Sidebar = ({ className = "", onNavigate }: { className?: string; onNavigate?: () => void }) => {
   const { usuario, can, hasModule } = useRole();
 
-  const visible = items.filter((item) => {
-    if (item.roles && !item.roles.includes(usuario.rol)) return false;
-    if (item.permission && !can(item.permission)) return false;
-    if (item.module && !hasModule(item.module)) return false;
-    return true;
-  });
+  const visible = visibleNavItems(items, { rol: usuario.rol, can, hasModule });
 
   return (
     <aside className={`w-64 shrink-0 bg-sidebar text-sidebar-foreground flex flex-col h-screen sticky top-0 ${className}`}>
@@ -54,7 +52,7 @@ export const Sidebar = ({ className = "", onNavigate }: { className?: string; on
             <Box className="h-5 w-5" />
           </div>
           <div>
-            <div className="font-bold tracking-tight">SalmoTrack v2</div>
+            <div className="font-bold tracking-tight">SalmoTrack v3</div>
             <div className="text-[11px] text-sidebar-foreground/70 truncate max-w-[150px]">
               <SensitiveText category="Empresa" value={usuario.organizacion_nombre ?? "Plataforma Visual"} />
             </div>
@@ -88,7 +86,7 @@ export const Sidebar = ({ className = "", onNavigate }: { className?: string; on
         ))}
       </nav>
       <div className="px-4 py-3 border-t border-sidebar-border text-xs text-sidebar-foreground/90 flex items-center justify-between">
-        <span>v2.0.0</span>
+        <span>v3.0.0</span>
         <span className="text-[10px] uppercase tracking-wider bg-sidebar-accent px-1.5 py-0.5 rounded">
           {usuario.rol}
         </span>

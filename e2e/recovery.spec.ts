@@ -1,9 +1,11 @@
 import { test, expect, type Page } from "@playwright/test";
+import { readFileSync, writeFileSync } from "node:fs";
+import path from "node:path";
 
 async function loginAndPrepare(page: Page) {
   await page.goto("/");
-  await page.getByLabel("Correo electronico").fill("browser@example.cl");
-  await page.getByLabel("Contrasena").fill("BrowserTest123!");
+  await page.getByLabel("Correo electrónico").fill("browser@example.cl");
+  await page.getByLabel("Contraseña").fill("BrowserTest123!");
   await page.getByRole("button", { name: "Ingresar", exact: true }).click();
   await expect(page).toHaveURL(/operario/);
   await page.getByRole("button", { name: /Preparar dispositivo/ }).click();
@@ -84,8 +86,8 @@ test("una cuenta de menor alcance no ve ubicaciones ni envía la cola de la ante
   await expect(page.getByRole("dialog")).toHaveCount(0);
   await page.getByTitle("Cerrar sesión").click();
   await context.setOffline(false);
-  await page.getByLabel("Correo electronico").fill("browser-limited@example.cl");
-  await page.getByLabel("Contrasena").fill("BrowserTest123!");
+  await page.getByLabel("Correo electrónico").fill("browser-limited@example.cl");
+  await page.getByLabel("Contraseña").fill("BrowserTest123!");
   const sends: string[] = [];
   context.on("request", (request) => { if (request.url().endsWith("/movimientos/sync")) sends.push(request.postData()!); });
   await page.getByRole("button", { name: "Ingresar", exact: true }).click();
@@ -118,4 +120,35 @@ test("resuelve la etiqueta estable por ingreso manual y URL directa sin red", as
   await page.goto(`/locations/${id}`);
   await expect(page).toHaveURL(new RegExp(`focus=${id}`));
   await expect(page.getByRole("heading", { name: "P0001", exact: true })).toBeVisible();
+});
+
+test("actualiza la PWA sin perder un movimiento pendiente", async ({ page, context }) => {
+  await loginAndPrepare(page);
+  await context.setOffline(true);
+  await queueReceipt(page, "Pendiente durante actualización");
+  await expect(page.getByRole("button", { name: /1 Pendiente/ })).toBeVisible();
+
+  await context.route("**/api/v2/movimientos/sync", (route) => route.abort("failed"));
+  const swPath = path.resolve("dist/sw.js");
+  const original = readFileSync(swPath, "utf8");
+  const updated = original.replace(
+      /self\.__CACHE_VERSION = "[^"]+";/,
+      'self.__CACHE_VERSION = "salmotrack-shell-test-update";',
+    );
+  expect(updated).not.toBe(original);
+  writeFileSync(swPath, updated);
+  try {
+    await context.setOffline(false);
+    await page.evaluate(async () => { await (await navigator.serviceWorker.ready).update(); });
+    await expect.poll(() => page.evaluate(async () => Boolean((await navigator.serviceWorker.getRegistration())?.waiting)),
+      { timeout: 20000 }).toBe(true);
+    await expect(page.getByRole("button", { name: "Actualizar aplicación" })).toBeVisible({ timeout: 20000 });
+
+    await context.setOffline(true);
+    await page.getByRole("button", { name: "Actualizar aplicación" }).click();
+    await expect(page.getByRole("button", { name: /1 Pendiente/ })).toBeVisible({ timeout: 20000 });
+    expect(await page.evaluate(() => caches.keys())).toContain("salmotrack-shell-test-update");
+  } finally {
+    writeFileSync(swPath, original);
+  }
 });

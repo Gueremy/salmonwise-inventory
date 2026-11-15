@@ -31,6 +31,23 @@ Actualizado el 8 de noviembre de 2026 (America/Santiago). El estado anterior hab
 | BI | Ocupación por capacidad/unidad, agrupación diaria America/Santiago, vistas SQL y aprovisionamiento de cuenta de lectura por organización. Aislamiento probado con login PostgreSQL real. |
 | CI | Workflows frontend/backend y PostgreSQL aprobados en GitHub. Integración de navegador aprobada en v3; se ejecuta al hacer push y también manualmente con referencia seleccionable del backend. |
 
+## Rama `feature/optimizacion-visual` (11 de noviembre de 2026)
+
+Cambios solo de frontend sobre `v3`; el backend no se modificó. Pendiente de fusionar.
+
+| Área | Estado |
+| --- | --- |
+| Configuraciones | Se retiraron la ruta `/settings`, la redirección `/config`, la entrada del menú y `Stub.tsx`. Ambas rutas responden 404. |
+| Pantalla inicial | Operario: `/operario`, con secciones Operaciones y Lugares. Jefe de bodega, admin de sede, super admin y roles personalizados: `/sites` (Lugares). Gerencia: `/gerencia`. El Dashboard sigue existiendo, pero solo aparece en el menú con `dashboard:read`. Reglas en `src/lib/navigation.ts`. |
+| Cargas 3D | Modelos generados por código (cajas, sacos, tambores, maxisacos y pallet), sin texturas. El tipo se elige por categoría del ítem, tipo de producto permitido, nombre y unidad (`KIND_PATTERNS` en `zoneLayout.ts`). La altura de la pila representa la ocupación y el piso lleva el color de estado. |
+| Rendimiento 3D | Una malla instanciada por tipo de carga (7 a 10 llamadas de dibujo por zona), dibujo bajo demanda (0 dibujos en reposo), nivel de detalle por presupuesto de triángulos, perfil de gama baja (`sceneQuality.ts`), códigos de ubicación en una textura y selección contra un volumen por ubicación. El motor 3D y los gráficos se descargan al abrir sus pantallas. |
+| Respaldo | Sin WebGL, o si la escena falla o pierde el contexto gráfico, la zona pasa a la vista 2D y el sitio conserva la lista de zonas. Un fallo al cargar una pantalla muestra un aviso sin perder menú ni sesión. |
+| Inventario | El contenido por ubicación se arma con índices (antes recorría todos los saldos, ítems y lotes por cada ubicación). |
+
+Verificación local: `tsc` sin errores, 68 pruebas unitarias (40 anteriores y 28 nuevas), ESLint sin hallazgos en los archivos cambiados, compilación correcta y 10 de 10 pruebas de navegador (`npm run test:e2e`, escritorio y Pixel 7) con el backend local. JavaScript inicial: de 2.055 KB a 757 KB.
+
+Pendiente: medir en una tablet Android de gama baja y en un PC con gráfica integrada (meta de 30 FPS con 1.000 ubicaciones; el ajuste es `cargoTriangleBudget` del perfil `low`), validar el mapeo de categorías con datos reales del piloto y revisar con usuarios la lectura de los tipos de carga.
+
 ## Correcciones adicionales de esta continuación
 
 - Conservación de `id_movimiento_original` en almacenamiento, payload de sincronización y backend, probada también con PostgreSQL.

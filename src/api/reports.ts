@@ -1,4 +1,4 @@
-import { API_BASE_URL } from "./client";
+import { apiFetchResponse } from "./client";
 
 export interface ReportDownloadResult {
   blob: Blob;
@@ -20,14 +20,14 @@ async function sha256FromArrayBuffer(buffer: ArrayBuffer): Promise<string> {
 
 export async function downloadReport(
   token: string,
-  kind: "pdf" | "excel" | "sernapesca",
+  kind: "csv" | "pdf" | "excel" | "sernapesca",
   query = "",
   resource: "movimientos" | "solicitudes" | "inconsistencias" = "movimientos",
 ): Promise<ReportDownloadResult> {
   const endpoint = kind === "sernapesca"
     ? "/reportes/sernapesca"
     : `/api/v2/exportaciones/${resource}/${kind}`;
-  const extension = kind === "pdf" ? "pdf" : "xlsx";
+  const extension = kind === "csv" ? "csv" : kind === "pdf" ? "pdf" : "xlsx";
   const params = new URLSearchParams(query);
   if (kind !== "sernapesca") {
     params.set("size", "10000");
@@ -35,14 +35,10 @@ export async function downloadReport(
   }
   const fetchPage = async (path = endpoint) => {
     const queryString = params.toString();
-    const response = await fetch(`${API_BASE_URL}${path}${queryString ? `?${queryString}` : ""}`, {
-      headers: { Authorization: `Bearer ${token}` },
+    return apiFetchResponse(`${path}${queryString ? `?${queryString}` : ""}`, {
+      token,
+      headers: { Accept: "*/*" },
     });
-    if (!response.ok) {
-      const errorJson = await response.json().catch(() => null);
-      throw new Error(errorJson?.detail ?? "No se pudo generar el reporte");
-    }
-    return response;
   };
   let response = await fetchPage();
 

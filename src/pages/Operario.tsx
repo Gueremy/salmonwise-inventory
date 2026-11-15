@@ -2,8 +2,8 @@ import { SensitiveText } from "@/privacy/EvidenceMode";
 import { parseLocationQr } from "@/lib/locationQr";
 import { OfflinePreparation } from "@/components/OfflinePreparation";
 import { useMemo, useState } from "react";
-import { Box, ArrowDownToLine, ArrowUpFromLine, RefreshCw, QrCode, Search, LogOut } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { Box, ArrowDownToLine, ArrowUpFromLine, RefreshCw, QrCode, Search, LogOut, ChevronRight, Ship, Factory, Warehouse } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
 import { useRole } from "@/context/RoleContext";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Input } from "@/components/ui/input";
@@ -16,6 +16,8 @@ import { toast } from "@/privacy/notifications";
 
 type MovementType = "entrada_proveedor" | "salida_produccion" | "traslado_interno";
 
+const tipoIcon = { embarcacion: Ship, planta: Factory, bodega: Warehouse };
+
 export default function Operario() {
   const { usuario, logout } = useRole();
   const inventoryQuery = useInventorySnapshot();
@@ -26,6 +28,10 @@ export default function Operario() {
   const navigate = useNavigate();
 
   const allContainers = useMemo(() => inventoryQuery.data?.containers ?? [], [inventoryQuery.data?.containers]);
+  const places = useMemo(() => {
+    const zones = inventoryQuery.data?.galpones ?? [];
+    return (inventoryQuery.data?.sedes ?? []).map((sede) => ({ sede, zones: zones.filter((zone) => zone.sedeId === sede.id) }));
+  }, [inventoryQuery.data?.sedes, inventoryQuery.data?.galpones]);
 
   const items = useMemo(() => {
     if (!searchTerm.trim()) {
@@ -69,15 +75,15 @@ export default function Operario() {
               <Box className="h-5 w-5" />
             </div>
             <div>
-              <div className="text-xs opacity-80">SalmoTrack v2 · Operador</div>
+              <div className="text-xs opacity-80">SalmoTrack v3 · Operador</div>
               <div className="font-semibold leading-tight"><SensitiveText category="Persona" value={usuario.nombre} /></div>
             </div>
           </div>
           <div className="flex items-center gap-2">
             <OfflineStatusIndicator onDark />
             <button
-              onClick={() => {
-                logout();
+              onClick={async () => {
+                await logout();
                 navigate("/");
               }}
               className="p-1.5 rounded hover:bg-white/15 ml-1"
@@ -91,49 +97,91 @@ export default function Operario() {
 
       <main className="p-4 space-y-5 max-w-xl mx-auto">
         <OfflinePreparation />
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-9 h-12 text-base"
-            placeholder="Buscar ubicación o ítem..."
-          />
-        </div>
 
-        <div className="grid grid-cols-2 gap-3">
-          <ActionButton
-            icon={ArrowDownToLine}
-            label="Registrar Entrada"
-            onClick={() => openMovementForm("entrada_proveedor")}
-            color="bg-primary"
-            disabled={!canCreateMovements}
-          />
-          <ActionButton
-            icon={ArrowUpFromLine}
-            label="Registrar Salida"
-            onClick={() => openMovementForm("salida_produccion")}
-            color="bg-secondary"
-            disabled={!canCreateMovements}
-          />
-          <ActionButton
-            icon={RefreshCw}
-            label="Traslado"
-            onClick={() => openMovementForm("traslado_interno")}
-            color="bg-primary"
-            disabled={!canCreateMovements}
-          />
-          <ActionButton
-            icon={QrCode}
-            label="Escanear QR"
-            onClick={() => setOpenQr(true)}
-            color="bg-primary"
-          />
-        </div>
+        <section aria-labelledby="operario-operaciones" className="space-y-2">
+          <h2 id="operario-operaciones" className="font-semibold text-sm px-1">Operaciones</h2>
+          <div className="grid grid-cols-2 gap-3">
+            <ActionButton
+              icon={ArrowDownToLine}
+              label="Registrar Entrada"
+              onClick={() => openMovementForm("entrada_proveedor")}
+              color="bg-primary"
+              disabled={!canCreateMovements}
+            />
+            <ActionButton
+              icon={ArrowUpFromLine}
+              label="Registrar Salida"
+              onClick={() => openMovementForm("salida_produccion")}
+              color="bg-secondary"
+              disabled={!canCreateMovements}
+            />
+            <ActionButton
+              icon={RefreshCw}
+              label="Traslado"
+              onClick={() => openMovementForm("traslado_interno")}
+              color="bg-primary"
+              disabled={!canCreateMovements}
+            />
+            <ActionButton
+              icon={QrCode}
+              label="Escanear QR"
+              onClick={() => setOpenQr(true)}
+              color="bg-primary"
+            />
+          </div>
+        </section>
 
-        <div>
+        <section aria-labelledby="operario-lugares" className="space-y-2">
+          <h2 id="operario-lugares" className="font-semibold text-sm px-1">Lugares</h2>
+          {places.map(({ sede, zones }) => {
+            const Icon = tipoIcon[sede.tipo] ?? Warehouse;
+            return (
+              <div key={sede.id} className="bg-card rounded-lg border border-border shadow-sm overflow-hidden">
+                <Link to={`/sites/${sede.id}`} className="flex items-center justify-between gap-3 p-3 hover:bg-muted/60">
+                  <span className="flex items-center gap-2.5 min-w-0">
+                    <span className="h-9 w-9 shrink-0 rounded-md bg-primary/10 text-primary flex items-center justify-center">
+                      <Icon className="h-4 w-4" />
+                    </span>
+                    <span className="font-semibold text-sm truncate"><SensitiveText category="Dato" value={sede.nombre} /></span>
+                  </span>
+                  <span className="flex items-center gap-1 text-xs text-muted-foreground shrink-0">
+                    {sede.ocupacion}% <ChevronRight className="h-4 w-4" />
+                  </span>
+                </Link>
+                {zones.map((zone) => (
+                  <Link
+                    key={zone.id}
+                    to={`/sites/${sede.id}/zones/${zone.id}`}
+                    className="flex items-center justify-between gap-3 px-3 py-2.5 border-t border-border text-sm hover:bg-muted/60"
+                  >
+                    <span className="truncate">{zone.codigo} · <SensitiveText category="Dato" value={zone.nombre} /></span>
+                    <span className="flex items-center gap-1 text-xs text-muted-foreground shrink-0">
+                      {zone.containers} ubic. · {zone.ocupacion_prom}% <ChevronRight className="h-4 w-4" />
+                    </span>
+                  </Link>
+                ))}
+              </div>
+            );
+          })}
+          {places.length === 0 && (
+            <div className="p-4 text-center text-sm text-muted-foreground border border-dashed border-border rounded-lg">
+              {inventoryQuery.isLoading ? "Cargando lugares..." : "No hay lugares disponibles para tu cuenta."}
+            </div>
+          )}
+        </section>
+
+        <section aria-labelledby="operario-ubicaciones">
+          <div className="relative mb-3">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-9 h-12 text-base"
+              placeholder="Buscar ubicación o ítem..."
+            />
+          </div>
           <div className="flex items-center justify-between mb-2 px-1">
-            <h3 className="font-semibold text-sm">Ubicaciones disponibles</h3>
+            <h3 id="operario-ubicaciones" className="font-semibold text-sm">Ubicaciones disponibles</h3>
             {searchTerm && (
               <button
                 onClick={() => setSearchTerm("")}
@@ -143,11 +191,17 @@ export default function Operario() {
               </button>
             )}
           </div>
+          {!searchTerm.trim() && allContainers.length > items.length && (
+            <p className="mb-2 px-1 text-xs text-muted-foreground">
+              Mostrando {items.length} de {allContainers.length} ubicaciones. Usa la búsqueda para encontrar las demás.
+            </p>
+          )}
           <div className="space-y-2">
             {items.map((item) => (
-              <div
-                key={item.codigo}
-                className="bg-card rounded-lg border border-border p-4 flex items-center justify-between shadow-sm"
+              <Link
+                key={item.id}
+                to={`/zones/${item.galponId}?focus=${item.id}`}
+                className="bg-card rounded-lg border border-border p-4 flex items-center justify-between shadow-sm hover:border-primary/60"
               >
                 <div>
                   <div className="font-bold">{item.codigo}</div>
@@ -157,7 +211,7 @@ export default function Operario() {
                   <div className="text-sm font-semibold">{item.ocupacion}%</div>
                   <StatusBadge estado={item.estado} />
                 </div>
-              </div>
+              </Link>
             ))}
             {items.length === 0 && (
               <div className="p-6 text-center text-sm text-muted-foreground border border-dashed border-border rounded-lg">
@@ -165,7 +219,7 @@ export default function Operario() {
               </div>
             )}
           </div>
-        </div>
+        </section>
 
         <div className="bg-secondary/10 border border-secondary/30 rounded-lg p-4 text-xs text-muted-foreground space-y-1">
           <div className="font-semibold text-secondary text-sm">Operación con o sin conexión</div>

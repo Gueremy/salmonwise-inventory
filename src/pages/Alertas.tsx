@@ -56,7 +56,7 @@ export default function Alertas() {
     <div className="p-6 space-y-5 animate-fade-in">
       <div>
         <h2 className="text-xl font-bold">Alertas activas</h2>
-        <p className="text-sm text-muted-foreground">Alertas de tu organización desde el backend v2.</p>
+        <p className="text-sm text-muted-foreground">Alertas activas de tu organización.</p>
       </div>
 
       {alertasQuery.isLoading && <div className="text-sm text-muted-foreground">Cargando alertas...</div>}

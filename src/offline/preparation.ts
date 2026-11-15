@@ -27,6 +27,34 @@ export interface OfflinePackage {
 
 export const packageKey = (orgId: string, userId: string) => `${orgId}:${userId}`;
 
+/** Quita los datos de la cuenta al salir, salvo operaciones aún sin resolver. */
+export async function clearOfflineDataOnLogout(orgId: string, userId: string): Promise<void> {
+  if (!orgId || !userId) return;
+  await db.transaction("rw", [db.offlinePackages, db.pendingMovements, db.syncLog,
+    db.organizations, db.sites, db.zones, db.locations, db.items, db.lots, db.rules, db.movementTypes], async () => {
+    const movements = await db.pendingMovements.where("organization_id").equals(orgId)
+      .and((record) => record.user_id === userId).toArray();
+    if (movements.some((record) => record.status !== "synced")) return;
+    await db.offlinePackages.delete(packageKey(orgId, userId));
+    await db.pendingMovements.bulkDelete(movements.map((record) => record.uuid_local));
+    for (const movement of movements) {
+      await db.syncLog.where("uuid_local").equals(movement.uuid_local).delete();
+    }
+    const otherPackages = await db.offlinePackages.where("organization_id").equals(orgId).count();
+    const otherUnresolved = await db.pendingMovements.where("organization_id").equals(orgId)
+      .and((record) => record.status !== "synced").count();
+    if (otherPackages || otherUnresolved) return;
+    await db.organizations.delete(orgId);
+    await db.sites.where("id_organizacion").equals(orgId).delete();
+    await db.zones.where("id_organizacion").equals(orgId).delete();
+    await db.locations.where("id_organizacion").equals(orgId).delete();
+    await db.items.where("id_organizacion").equals(orgId).delete();
+    await db.lots.where("id_organizacion").equals(orgId).delete();
+    await db.rules.where("id_organizacion").equals(orgId).delete();
+    await db.movementTypes.where("id_organizacion").equals(orgId).delete();
+  });
+}
+
 export async function getOfflinePackage(orgId: string, userId: string, requireWrite = false): Promise<OfflinePackage> {
   const data = await db.offlinePackages.get(packageKey(orgId, userId));
   if (!data || data.organization_id !== orgId || data.user_id !== userId) {

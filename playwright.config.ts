@@ -7,7 +7,7 @@ if (!process.env.PLAYWRIGHT_BROWSERS_PATH && existsSync(path.resolve(".cache/pla
   process.env.PLAYWRIGHT_BROWSERS_PATH = path.resolve(".cache/playwright");
 }
 
-const backend = path.resolve("../backend/backend");
+const backend = process.env.SALMOTRACK_TEST_BACKEND_DIR || path.resolve("../backend/backend");
 const python = process.env.SALMOTRACK_TEST_PYTHON || (process.platform === "win32" ? path.resolve("../backend/.venv/Scripts/python.exe") : "python");
 
 export default defineConfig({

@@ -34,8 +34,8 @@ async def main():
                 await expect(page.get_by_role("button", name="Ingresar")).to_be_enabled(timeout=15000)
                 await page.get_by_role("button", name="Ingresar").click()
             else:
-                await page.goto(f"{base_url}/dashboard", wait_until="domcontentloaded")
-            await expect(page).to_have_url(re.compile(r"/dashboard"), timeout=15000)
+                await page.goto(f"{base_url}/sites", wait_until="domcontentloaded")
+            await expect(page).to_have_url(re.compile(r"/sites"), timeout=15000)
             if width == 390:
                 await page.get_by_role("button", name="Abrir menú").click()
                 await page.get_by_role("link", name="Movimientos").click()

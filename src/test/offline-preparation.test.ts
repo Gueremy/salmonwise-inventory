@@ -1,6 +1,6 @@
 import { beforeEach, afterEach, describe, expect, it, vi } from "vitest";
 import { db } from "@/offline/db";
-import { getOfflinePackage, prepareOffline, type OfflinePackage } from "@/offline/preparation";
+import { clearOfflineDataOnLogout, getOfflinePackage, prepareOffline, type OfflinePackage } from "@/offline/preparation";
 
 const snapshot = (user: string): OfflinePackage => ({
   key: `org:${user}`, organization_id: "org", user_id: user,
@@ -11,7 +11,27 @@ const snapshot = (user: string): OfflinePackage => ({
 
 beforeEach(async () => {
   await db.offlinePackages.clear();
+  await db.pendingMovements.clear();
   vi.stubGlobal("navigator", { serviceWorker: { ready: Promise.resolve({}) } });
+});
+
+describe("cierre de sesión en tablet compartida", () => {
+  it("borra el paquete si la cola está resuelta y conserva el de otra cuenta", async () => {
+    await db.offlinePackages.bulkPut([snapshot("user-a"), snapshot("user-b")]);
+    await db.pendingMovements.put({ uuid_local: "done", organization_id: "org", user_id: "user-a", status: "synced" } as never);
+    await clearOfflineDataOnLogout("org", "user-a");
+    expect(await db.offlinePackages.get("org:user-a")).toBeUndefined();
+    expect(await db.pendingMovements.get("done")).toBeUndefined();
+    expect(await db.offlinePackages.get("org:user-b")).toBeDefined();
+  });
+
+  it("conserva paquete y cola cuando hay un movimiento pendiente o rechazado", async () => {
+    await db.offlinePackages.put(snapshot("user-a"));
+    await db.pendingMovements.put({ uuid_local: "pending", organization_id: "org", user_id: "user-a", status: "pending" } as never);
+    await clearOfflineDataOnLogout("org", "user-a");
+    expect(await db.offlinePackages.get("org:user-a")).toBeDefined();
+    expect(await db.pendingMovements.get("pending")).toBeDefined();
+  });
 });
 afterEach(() => { vi.unstubAllGlobals(); vi.restoreAllMocks(); });
 describe("preparación offline por cuenta", () => {

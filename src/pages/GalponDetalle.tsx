@@ -1,8 +1,9 @@
 import { SensitiveText } from "@/privacy/EvidenceMode";
-import { useMemo, useState, useEffect } from "react";
+import { lazy, useMemo, useState, useEffect } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
-import { ZoneScene } from "@/components/three/ZoneScene";
+import { SceneBoundary, SceneLoading } from "@/components/three/SceneBoundary";
+import { detectWebGL } from "@/components/three/sceneQuality";
 import { ZoneGrid2D } from "@/components/two-d/ZoneGrid2D";
 import { LocationDetailDrawer } from "@/components/locations/LocationDetailDrawer";
 import { StatusLegend } from "@/components/StatusLegend";
@@ -10,6 +11,9 @@ import { Button } from "@/components/ui/button";
 import { ClipboardEdit, Box, Grid3X3 } from "lucide-react";
 import { MovimientoForm } from "@/components/MovimientoForm";
 import { useInventorySnapshot } from "@/hooks/use-inventory-snapshot";
+
+// El motor 3D se descarga solo al abrir esta vista.
+const ZoneScene = lazy(() => import("@/components/three/ZoneScene").then((module) => ({ default: module.ZoneScene })));
 
 export default function GalponDetalle() {
   const { id } = useParams();
@@ -27,7 +31,13 @@ export default function GalponDetalle() {
 
   const [selectedId, setSelectedId] = useState<string | null>(focusId);
   const [openMov, setOpenMov] = useState(false);
-  const [viewMode, setViewMode] = useState<"3d" | "2d">(modeParam === "2d" ? "2d" : "3d");
+  // Sin WebGL, o si la escena falla, la pantalla sigue operativa en 2D.
+  const [sceneAvailable, setSceneAvailable] = useState(detectWebGL);
+  const [viewMode, setViewMode] = useState<"3d" | "2d">(modeParam === "2d" || !sceneAvailable ? "2d" : "3d");
+  const disableScene = () => {
+    setSceneAvailable(false);
+    setViewMode("2d");
+  };
 
   useEffect(() => {
     if (focusId) {
@@ -56,11 +66,20 @@ export default function GalponDetalle() {
     ? Math.round(display.reduce((total, container) => total + container.ocupacion, 0) / display.length)
     : galpon.ocupacion_prom;
 
+  const grid2D = (
+    <ZoneGrid2D
+      locations={display}
+      selectedId={selectedId}
+      onSelect={(loc) => setSelectedId(loc.id)}
+      highlightedId={focusId}
+    />
+  );
+
   return (
     <div className="p-6 animate-fade-in">
       <Breadcrumbs
         items={[
-          { label: "Sitios", to: "/sites" },
+          { label: "Lugares", to: "/sites" },
           { sensitive: true, label: sede.nombre, to: `/sites/${sede.id}` },
           { sensitive: true, label: `Zona ${galpon.codigo} · ${galpon.nombre}` },
         ]}
@@ -86,6 +105,8 @@ export default function GalponDetalle() {
                   variant={viewMode === "3d" ? "default" : "ghost"}
                   className="h-7 px-2.5 text-xs gap-1.5"
                   onClick={() => setViewMode("3d")}
+                  disabled={!sceneAvailable}
+                  title={sceneAvailable ? undefined : "La vista 3D no está disponible en este dispositivo"}
                 >
                   <Box className="h-3.5 w-3.5" /> 3D
                 </Button>
@@ -110,21 +131,28 @@ export default function GalponDetalle() {
           </div>
 
           {/* Renderizado condicional 2D / 3D */}
+          {!sceneAvailable && (
+            <p role="status" className="text-xs text-muted-foreground">
+              La vista 3D no está disponible en este dispositivo. Se muestra la vista 2D.
+            </p>
+          )}
           {display.length > 0 ? (
-            viewMode === "3d" ? (
-              <ZoneScene
-                locations={display}
-                selectedId={selectedId}
-                onSelect={(loc) => setSelectedId(loc.id)}
-                highlightedId={focusId}
-              />
+            viewMode === "3d" && sceneAvailable ? (
+              <SceneBoundary
+                onError={disableScene}
+                loading={<SceneLoading className="h-[min(600px,70vh)] min-h-[320px]" />}
+                fallback={grid2D}
+              >
+                <ZoneScene
+                  locations={display}
+                  selectedId={selectedId}
+                  onSelect={(loc) => setSelectedId(loc.id)}
+                  highlightedId={focusId}
+                  onUnavailable={disableScene}
+                />
+              </SceneBoundary>
             ) : (
-              <ZoneGrid2D
-                locations={display}
-                selectedId={selectedId}
-                onSelect={(loc) => setSelectedId(loc.id)}
-                highlightedId={focusId}
-              />
+              grid2D
             )
           ) : (
             <div className="rounded-lg border border-dashed border-border p-6 text-sm text-muted-foreground text-center">

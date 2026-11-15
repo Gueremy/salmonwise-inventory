@@ -20,7 +20,7 @@ export default function Reportes() {
   const [lastReport, setLastReport] = useState<ReportDownloadResult | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const handleDownload = async (kind: "pdf" | "excel" | "sernapesca") => {
+  const handleDownload = async (kind: "csv" | "pdf" | "excel" | "sernapesca") => {
     setLoading(kind);
     setError(null);
     try {
@@ -39,13 +39,16 @@ export default function Reportes() {
       <div>
         <h2 className="text-xl font-bold">Reportes de movimientos</h2>
         <p className="text-sm text-muted-foreground">
-          Descarga PDF/Excel desde FastAPI y calcula SHA-256 del archivo entregado.
+          Descarga CSV, PDF o Excel y calcula SHA-256 del archivo entregado.
         </p>
       </div>
 
       <section className="bg-card border border-border rounded-lg p-5 space-y-4">
         <p className="text-xs text-muted-foreground">Las descargas contienen datos operativos sin censura. El modo evidencia protege la pantalla.</p>
         <div className="flex flex-wrap gap-3">
+          <Button onClick={() => handleDownload("csv")} disabled={Boolean(loading)} variant="outline">
+            <FileText className="h-4 w-4 mr-2" /> {loading === "csv" ? "Generando..." : "CSV movimientos"}
+          </Button>
           <Button onClick={() => handleDownload("pdf")} disabled={Boolean(loading)} className="bg-primary hover:bg-secondary">
             <FileText className="h-4 w-4 mr-2" /> {loading === "pdf" ? "Generando..." : "PDF movimientos"}
           </Button>

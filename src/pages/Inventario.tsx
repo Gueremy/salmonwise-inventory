@@ -3,8 +3,10 @@ import { Link } from "react-router-dom";
 import { Boxes } from "lucide-react";
 import { ocupacionToEstado, estadoColor } from "@/lib/inventory";
 import { useInventorySnapshot } from "@/hooks/use-inventory-snapshot";
+import { useRole } from "@/context/RoleContext";
 
 export default function Inventario() {
+  const { organizacion } = useRole();
   const inventoryQuery = useInventorySnapshot();
   const sedes = inventoryQuery.data?.sedes ?? [];
   const galpones = inventoryQuery.data?.galpones ?? [];
@@ -40,7 +42,7 @@ export default function Inventario() {
               </div>
               <div className="flex gap-1.5 mt-2">
                 {sedeGalpones.map((galpon) => {
-                  const estado = ocupacionToEstado(galpon.ocupacion_prom);
+                  const estado = ocupacionToEstado(galpon.ocupacion_prom, organizacion.configuracion);
 
                   return (
                     <div

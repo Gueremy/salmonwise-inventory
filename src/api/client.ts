@@ -16,7 +16,7 @@ export interface RequestOptions extends RequestInit {
   params?: Record<string, string | number | boolean | undefined | null>;
 }
 
-export async function apiFetch<T>(endpoint: string, options: RequestOptions = {}): Promise<T> {
+export async function apiFetchResponse(endpoint: string, options: RequestOptions = {}): Promise<Response> {
   const { token, params, headers, ...rest } = options;
 
   let url = `${API_BASE_URL}${endpoint.startsWith("/") ? endpoint : `/${endpoint}`}`;
@@ -70,6 +70,11 @@ export async function apiFetch<T>(endpoint: string, options: RequestOptions = {}
     throw new ApiError(response.status, errorDetail, response.headers.get("X-Request-ID"));
   }
 
+  return response;
+}
+
+export async function apiFetch<T>(endpoint: string, options: RequestOptions = {}): Promise<T> {
+  const response = await apiFetchResponse(endpoint, options);
   if (response.status === 204) {
     return null as unknown as T;
   }

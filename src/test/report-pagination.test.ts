@@ -1,10 +1,33 @@
 import { webcrypto } from "node:crypto";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { downloadReport } from "@/api/reports";
+import { registerUnauthorizedHandler } from "@/api/client";
 
 afterEach(() => vi.unstubAllGlobals());
 
 describe("exportación completa por instantánea", () => {
+  it("renueva la sesión antes de repetir una descarga rechazada por token vencido", async () => {
+    vi.stubGlobal("crypto", webcrypto);
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({ detail: "Credenciales inválidas o expiradas" }), {
+        status: 401,
+        headers: { "content-type": "application/json" },
+      }))
+      .mockResolvedValueOnce(new Response(new Uint8Array([37, 80, 68, 70]), {
+        headers: { "content-type": "application/pdf" },
+      }));
+    vi.stubGlobal("fetch", fetchMock);
+    const unregister = registerUnauthorizedHandler(async () => "token-renovado");
+    try {
+      const result = await downloadReport("token-vencido", "pdf");
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+      expect(fetchMock.mock.calls[1][1].headers.Authorization).toBe("Bearer token-renovado");
+      expect(result.sha256).toHaveLength(64);
+    } finally {
+      unregister();
+    }
+  });
+
   it("descarga del servidor un ZIP consistente para más de 10000 filas", async () => {
     vi.stubGlobal("crypto", webcrypto);
     const archive = new Uint8Array([80, 75, 3, 4, 1, 2, 3]);

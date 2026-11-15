@@ -1,4 +1,6 @@
 import type { ApiAlerta, ApiContainer, ApiGalpon, ApiSede } from "@/lib/api";
+import { resolveLocationVisualState } from "@/domain/location";
+import type { OrganizationConfig } from "@/domain/organization";
 
 export type EstadoContainer = "disponible" | "medio" | "critico" | "mantenimiento" | "cuarentena";
 export type TipoSede = "embarcacion" | "planta" | "bodega";
@@ -35,6 +37,11 @@ export interface InventoryContainerView {
   tipoProductoPermitido: string;
   posicionFila: number;
   posicionCol: number;
+  /** Categoría del ítem principal almacenado, si hay contenido. */
+  categoria: string | null;
+  /** Coordenadas del editor de layout, cuando existen. */
+  layoutX: number | null;
+  layoutZ: number | null;
 }
 
 export interface InventorySnapshot {
@@ -59,9 +66,10 @@ export const estadoLabel: Record<EstadoContainer, string> = {
   cuarentena: "Cuarentena",
 };
 
-export const ocupacionToEstado = (ocupacion: number): EstadoContainer => {
-  if (ocupacion < 41) return "disponible";
-  if (ocupacion < 80) return "medio";
+export const ocupacionToEstado = (ocupacion: number, config?: OrganizationConfig): EstadoContainer => {
+  const thresholds = config?.umbrales;
+  if (ocupacion <= (thresholds?.disponible_max ?? 40)) return "disponible";
+  if (ocupacion <= (thresholds?.medio_max ?? 79)) return "medio";
   return "critico";
 };
 
@@ -94,7 +102,7 @@ function weightedOccupancy(locations: InventoryContainerView[]) {
   return capacity ? Math.round(stock / capacity * 10000) / 100 : 0;
 }
 
-function buildContainer(container: ApiContainer): InventoryContainerView {
+function buildContainer(container: ApiContainer, config?: OrganizationConfig): InventoryContainerView {
   const ocupacion = toOccupancyPercent(container.ocupacion_actual, container.capacidad_max);
   const productoBase = tipoProductoLabelMap[container.tipo_producto_permitido] ?? container.tipo_producto_permitido;
   const hasContent = container.ocupacion_actual > 0;
@@ -103,7 +111,11 @@ function buildContainer(container: ApiContainer): InventoryContainerView {
     id: container.id,
     codigo: container.codigo,
     ocupacion,
-    estado: container.estado as EstadoContainer,
+    estado: resolveLocationVisualState({
+      ocupacion_actual: container.ocupacion_actual,
+      capacidad_maxima: container.capacidad_max,
+      estado: container.estado,
+    }, config).estado as EstadoContainer,
     producto: hasContent ? container.producto_nombre ?? "Contenido histórico incompleto" : null,
     lote: container.numero_lote ?? null,
     vencimiento: container.fecha_vencimiento ?? null,
@@ -114,6 +126,9 @@ function buildContainer(container: ApiContainer): InventoryContainerView {
     tipoProductoPermitido: container.tipo_producto_permitido,
     posicionFila: container.posicion_fila,
     posicionCol: container.posicion_col,
+    categoria: hasContent ? container.producto_categoria ?? null : null,
+    layoutX: container.layout_x ?? null,
+    layoutZ: container.layout_z ?? null,
   };
 }
 
@@ -122,9 +137,10 @@ export function buildInventorySnapshot(input: {
   galpones: ApiGalpon[];
   containers: ApiContainer[];
   alertas: ApiAlerta[];
+  config?: OrganizationConfig;
 }): InventorySnapshot {
   const containers = input.containers
-    .map(buildContainer)
+    .map((container) => buildContainer(container, input.config))
     .sort((left, right) => {
       if (left.galponId !== right.galponId) {
         return left.galponId.localeCompare(right.galponId);
@@ -189,8 +205,8 @@ export function buildInventorySnapshot(input: {
     .filter((sede) => sede.estado === "activo")
     .map((sede) => {
       const sedeGalpones = galponesBySede.get(sede.id) ?? [];
-      const zoneIds = new Set(sedeGalpones.map((galpon) => galpon.id));
-      const siteLocations = containers.filter((location) => zoneIds.has(location.galponId));
+      // Se reutiliza el índice por zona en vez de recorrer todas las ubicaciones por cada sede.
+      const siteLocations = sedeGalpones.flatMap((galpon) => containersByGalpon.get(galpon.id) ?? []);
 
       return {
         id: sede.id,

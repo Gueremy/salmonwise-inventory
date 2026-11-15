@@ -16,7 +16,7 @@ export function EvidenceModeControl() {
   const { enabled, setEnabled } = useEvidenceMode();
   useEffect(() => { toast.dismiss(); }, [enabled]);
   // The toggle survives navigation but resets on page reload and account changes.
-  return <div className="fixed bottom-3 right-3 z-[100] max-w-xs rounded-lg border bg-background p-2 shadow-lg print:hidden">
+  return <div className="relative z-[100] border bg-background p-2 print:hidden md:fixed md:bottom-3 md:right-3 md:max-w-xs md:rounded-lg md:shadow-lg">
     <button type="button" aria-pressed={enabled} onClick={() => setEnabled(!enabled)} className="text-xs font-semibold p-1">
       {enabled ? "Modo evidencia activo · Mostrar datos" : "Proteger datos para capturas"}
     </button>
