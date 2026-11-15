@@ -8,7 +8,7 @@ Actualizado: 15-11-2026. `[x]` significa comprobado con la evidencia indicada; `
 - [x] Ejecutar los tres scripts de integración con datos sintéticos y los recorridos de navegador originales.
 - [x] Auditar dependencias. El frontend pasó de cinco a dos avisos moderados de producción tras una actualización compatible; ninguno alto o crítico. El backend actualizó `dnspython`, sustituyó `python-jose` por PyJWT y actualizó pytest. La auditoría completa de Python terminó sin avisos conocidos.
 - [x] Revisar las dos alertas restantes de React Router 6. La de SSR no aplica porque esta app usa `BrowserRouter` sin SSR; la de redirección requiere una ruta aportada por un atacante y el destino tras login rechaza barras invertidas y caracteres de control. Sigue siendo una dependencia señalada: actualizar a React Router 7 tras el piloto y repetir pruebas. [Aviso SSR](https://github.com/advisories/GHSA-337j-9hxr-rhxg) · [aviso de redirección](https://github.com/advisories/GHSA-wrjc-x8rr-h8h6).
-- [x] Confirmar CI de los cambios de código: [frontend `04abaae`](https://github.com/Gueremy/salmonwise-inventory/actions/runs/43677547966) y [backend `e65aae5`](https://github.com/Gueremy/AXIOUS/actions/runs/43678143494), ambas aprobadas.
+- [x] Confirmar CI de los cambios de código: [frontend `a9e1e23`](https://github.com/Gueremy/salmonwise-inventory/actions/runs/43678457488) y [backend `0055c5e`](https://github.com/Gueremy/AXIOUS/actions/runs/43678715070), ambas aprobadas.
 
 ## Fase 2 — Seguridad y datos offline
 
@@ -24,7 +24,8 @@ Actualizado: 15-11-2026. `[x]` significa comprobado con la evidencia indicada; `
 - [x] Vista previa HTTPS y backend v3 con organización y cuentas de QA.
 - [x] Login y QR de prueba P0129 con cámara nativa y lector de la app en teléfono.
 - [ ] Verificar un respaldo reciente y restaurable de la base Render.
-- [ ] Hacer que una etiqueta QR oficial nueva abra la vista previa; requiere coordinar `FRONTEND_URL` de la API compartida.
+- [x] Preparar etiquetas QR con el dominio del origen autorizado: el backend usa la vista previa al descargar desde ella y conserva `FRONTEND_URL` en los demás casos. Prueba automatizada y CI aprobadas.
+- [ ] Descargar una etiqueta QR oficial nueva desde la vista previa y comprobar en un teléfono que vuelve a la vista previa. Requiere desplegar el backend y permitir ese origen en `CORS_ORIGINS` del servicio Render.
 - [ ] Verificar las tres cabeceras HTTPS después de que se configuren en `salmotrack-v3-prueba`.
 
 ## Fase 4 — Pruebas integrales
