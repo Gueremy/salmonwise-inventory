@@ -2,8 +2,8 @@ import { test, expect, type Page } from "@playwright/test";
 
 async function loginAndPrepare(page: Page) {
   await page.goto("/");
-  await page.getByLabel("Correo electronico").fill("browser@example.cl");
-  await page.getByLabel("Contrasena").fill("BrowserTest123!");
+  await page.getByLabel("Correo electrónico").fill("browser@example.cl");
+  await page.getByLabel("Contraseña").fill("BrowserTest123!");
   await page.getByRole("button", { name: "Ingresar", exact: true }).click();
   await expect(page).toHaveURL(/operario/);
   await page.getByRole("button", { name: /Preparar dispositivo/ }).click();
@@ -84,8 +84,8 @@ test("una cuenta de menor alcance no ve ubicaciones ni envía la cola de la ante
   await expect(page.getByRole("dialog")).toHaveCount(0);
   await page.getByTitle("Cerrar sesión").click();
   await context.setOffline(false);
-  await page.getByLabel("Correo electronico").fill("browser-limited@example.cl");
-  await page.getByLabel("Contrasena").fill("BrowserTest123!");
+  await page.getByLabel("Correo electrónico").fill("browser-limited@example.cl");
+  await page.getByLabel("Contraseña").fill("BrowserTest123!");
   const sends: string[] = [];
   context.on("request", (request) => { if (request.url().endsWith("/movimientos/sync")) sends.push(request.postData()!); });
   await page.getByRole("button", { name: "Ingresar", exact: true }).click();

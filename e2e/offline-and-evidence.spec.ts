@@ -4,8 +4,8 @@ test("login, evidencia reversible, recarga offline y recepción de lote nuevo", 
   const lotNumber = `LOTE-${info.project.name}-${Date.now()}`;
   const lostResponse = `Respuesta perdida ${info.project.name}-${Date.now()}`;
   await page.goto("/");
-  await page.getByLabel("Correo electronico").fill("browser@example.cl");
-  await page.getByLabel("Contrasena").fill("BrowserTest123!");
+  await page.getByLabel("Correo electrónico").fill("browser@example.cl");
+  await page.getByLabel("Contraseña").fill("BrowserTest123!");
   await page.getByRole("button", { name: "Ingresar", exact: true }).click();
   await expect(page).toHaveURL(/operario/);
   await expect(page.getByText("Operaria privada de prueba")).toBeVisible();
