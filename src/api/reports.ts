@@ -20,14 +20,14 @@ async function sha256FromArrayBuffer(buffer: ArrayBuffer): Promise<string> {
 
 export async function downloadReport(
   token: string,
-  kind: "pdf" | "excel" | "sernapesca",
+  kind: "csv" | "pdf" | "excel" | "sernapesca",
   query = "",
   resource: "movimientos" | "solicitudes" | "inconsistencias" = "movimientos",
 ): Promise<ReportDownloadResult> {
   const endpoint = kind === "sernapesca"
     ? "/reportes/sernapesca"
     : `/api/v2/exportaciones/${resource}/${kind}`;
-  const extension = kind === "pdf" ? "pdf" : "xlsx";
+  const extension = kind === "csv" ? "csv" : kind === "pdf" ? "pdf" : "xlsx";
   const params = new URLSearchParams(query);
   if (kind !== "sernapesca") {
     params.set("size", "10000");
