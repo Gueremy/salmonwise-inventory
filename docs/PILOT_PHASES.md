@@ -28,7 +28,7 @@ Actualizado: 15-11-2026. `[x]` significa comprobado con la evidencia indicada; `
 - [x] Preparar etiquetas QR con el dominio del origen autorizado: el backend usa la vista previa al descargar desde ella y conserva `FRONTEND_URL` en los demás casos. Prueba automatizada y CI aprobadas.
 - [ ] Descargar una etiqueta QR oficial nueva desde la vista previa y comprobar en un teléfono que vuelve a la vista previa. Requiere desplegar el backend y permitir ese origen en `CORS_ORIGINS` del servicio Render.
 - [x] Verificar las tres cabeceras HTTPS después de configurarlas en `salmotrack-v3-prueba`; la sesión de jefatura abrió Bodega Central, 3D, 2D y detalle, y descargó un QR sin errores del navegador.
-- [ ] Repetir cámara nativa y lector QR en teléfono después de aplicar las cabeceras.
+- [x] Repetir cámara nativa y lector QR en teléfono después de aplicar las cabeceras. Ambos abrieron P0003 en Alimento seco con `operario@example.com`, cuenta autorizada para Bodega.
 
 ## Fase 4 — Pruebas integrales
 
