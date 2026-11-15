@@ -13,7 +13,7 @@ export function PwaUpdateNotice() {
     return () => { active = false; clearInterval(timer); };
   }, []);
   if (!waiting) return null;
-  return <div className="fixed bottom-3 left-3 z-[100] rounded border bg-background p-3 text-xs max-w-xs">
+  return <div className="fixed top-40 left-3 z-[100] rounded border bg-background p-3 text-xs max-w-xs sm:top-auto sm:bottom-3">
     <p>Actualización disponible. Guarda tus formularios antes de actualizar; la cola local se conserva.</p>
     <button className="font-semibold underline mt-2" onClick={() => {
       navigator.serviceWorker.addEventListener("controllerchange", () => window.location.reload(), { once: true });

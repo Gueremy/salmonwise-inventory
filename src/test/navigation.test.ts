@@ -47,6 +47,7 @@ describe("pantalla inicial por rol", () => {
     expect(safeInternalPath("//evil.example")).toBeNull();
     expect(safeInternalPath("https://evil.example")).toBeNull();
     expect(safeInternalPath("/\\evil.example")).toBeNull();
+    expect(safeInternalPath("/sites\n//evil.example")).toBeNull();
     expect(safeInternalPath(undefined)).toBeNull();
   });
 });
