@@ -16,17 +16,19 @@ Actualizado: 15-11-2026. `[x]` significa comprobado con la evidencia indicada; `
 - [x] Implementar revocación de renovación al salir con conexión y límites de recuperación de contraseña.
 - [x] Reemplazar la biblioteca JWT vulnerable. Se comprobó que PyJWT acepta tokens HS256 emitidos por la biblioteca anterior y que los tokens nuevos siguen siendo legibles; arranque y CI backend aprobados.
 - [x] Borrar el paquete offline al salir cuando la cuenta no tiene movimientos sin resolver; conservar los pendientes aislados por cuenta. Pruebas locales y de navegador aprobadas.
-- [ ] Comprobar las cabeceras en el servicio estático de la vista previa de Render.
+- [x] Comprobar las cabeceras en el servicio estático de la vista previa de Render. GET HTTPS respondió 200 con CSP, `X-Frame-Options: DENY` y `Referrer-Policy: strict-origin-when-cross-origin` el 15-11-2026.
 - [ ] Probar en una tablet compartida el cierre de sesión y cambio de cuenta con y sin cola pendiente.
 
 ## Fase 3 — Vista previa HTTPS
 
 - [x] Vista previa HTTPS y backend v3 con organización y cuentas de QA.
 - [x] Login y QR de prueba P0129 con cámara nativa y lector de la app en teléfono.
-- [ ] Verificar un respaldo reciente y restaurable de la base Render.
+- [x] Confirmar un respaldo reciente de la base del piloto fuera de Render. Bravo informó `salmotrack_v3_20261115_1140.dump` (15-11-2026, 161,5 KB, 37 tablas con datos) y revisión con `pg_restore`.
+- [ ] Confirmar si el respaldo se restauró en una base de prueba; la revisión de contenido con `pg_restore` no demuestra por sí sola una restauración completa.
 - [x] Preparar etiquetas QR con el dominio del origen autorizado: el backend usa la vista previa al descargar desde ella y conserva `FRONTEND_URL` en los demás casos. Prueba automatizada y CI aprobadas.
 - [ ] Descargar una etiqueta QR oficial nueva desde la vista previa y comprobar en un teléfono que vuelve a la vista previa. Requiere desplegar el backend y permitir ese origen en `CORS_ORIGINS` del servicio Render.
-- [ ] Verificar las tres cabeceras HTTPS después de que se configuren en `salmotrack-v3-prueba`.
+- [x] Verificar las tres cabeceras HTTPS después de configurarlas en `salmotrack-v3-prueba`; la sesión de jefatura abrió Bodega Central, 3D, 2D y detalle, y descargó un QR sin errores del navegador.
+- [ ] Repetir cámara nativa y lector QR en teléfono después de aplicar las cabeceras.
 
 ## Fase 4 — Pruebas integrales
 
